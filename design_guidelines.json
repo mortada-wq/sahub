@@ -1,0 +1,101 @@
+{
+  "project_name": "sahub",
+  "theme": "Light",
+  "archetype": "Archetype 4 (Swiss & High-Contrast / AI Minimalist)",
+  "typography": {
+    "heading_font": "Outfit",
+    "body_font": "IBM Plex Sans",
+    "import_instructions": "Add to main CSS or index.html: @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap');",
+    "hierarchy": {
+      "h1": "font-outfit text-4xl sm:text-5xl tracking-tight text-zinc-900 font-medium",
+      "h2": "font-outfit text-2xl sm:text-3xl tracking-tight text-zinc-900 font-medium",
+      "h3": "font-outfit text-xl sm:text-2xl text-zinc-900 font-medium",
+      "body": "font-plex text-base text-zinc-700 leading-relaxed",
+      "small": "font-plex text-sm text-zinc-500",
+      "label": "font-plex text-xs uppercase tracking-[0.2em] text-zinc-500 font-semibold"
+    }
+  },
+  "colors": {
+    "background": {
+      "main": "bg-white",
+      "sidebar": "bg-zinc-50",
+      "surface": "bg-white"
+    },
+    "text": {
+      "primary": "text-zinc-900",
+      "secondary": "text-zinc-600",
+      "muted": "text-zinc-400"
+    },
+    "border": {
+      "default": "border-zinc-200",
+      "focus": "border-zinc-400"
+    },
+    "brand": {
+      "primary": "bg-zinc-900 text-white hover:bg-zinc-800",
+      "secondary": "bg-zinc-100 text-zinc-900 hover:bg-zinc-200"
+    },
+    "status": {
+      "success": "bg-emerald-50 text-emerald-700 border-emerald-200",
+      "warning": "bg-amber-50 text-amber-700 border-amber-200",
+      "danger": "bg-red-50 text-red-700 border-red-200",
+      "info": "bg-blue-50 text-blue-700 border-blue-200"
+    }
+  },
+  "layout_and_spacing": {
+    "structure": "Sidebar-Main Hybrid (ChatGPT style). Sidebar on left (w-64) with slightly off-white bg (zinc-50), Main content area pure white.",
+    "spacing_scale": "Generous. Use p-6, p-8, p-12 for containers. Use gap-6 or gap-8 in grids.",
+    "radius": "Use rounded-2xl for main cards/modals, rounded-xl for standard inputs, rounded-full for buttons.",
+    "grid_system": "Bento Grid protocol for Dashboard (MODE B: Control Room Grid). grid-cols-1 md:grid-cols-3 lg:grid-cols-4 with gap-6."
+  },
+  "component_instructions": {
+    "buttons": "Pill-shaped (rounded-full). Primary buttons should be black (zinc-900). Secondary buttons light gray. Add smooth transition-all duration-200.",
+    "inputs": "ChatGPT-like textareas. For 'Add Task', use a large, sticky bottom input bar with rounded-2xl, subtle shadow, and a submit icon button inside it.",
+    "cards": "Cardless preference where possible. If cards are needed, use flat background, 1px subtle border (border-zinc-200), no heavy drop shadows. Hover states: slight lift (-translate-y-1) and shadow-sm.",
+    "navigation": "Icon + Label in sidebar. Active state: bg-zinc-200/50 text-zinc-900 font-medium. Inactive: text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100/50.",
+    "badges": "rounded-full px-2.5 py-0.5 text-xs font-medium border"
+  },
+  "features_implementation": {
+    "task_management": "Use a chat-like input at the bottom to quickly 'prompt' a new task. Display tasks in a clean list or kanban with avatars, priority badges, and due dates.",
+    "knowledge_base": "Masonry or bento grid of document cards. Emphasize titles and excerpts.",
+    "updates_feed": "Minimalist vertical timeline or feed. Use the modern office image as a header for company-wide announcements.",
+    "role_access": "Subtle UI badges to indicate user role (Admin, Manager, Member) near the profile section."
+  },
+  "assets": {
+    "avatars": [
+      {
+        "url": "https://images.unsplash.com/photo-1762522926157-bcc04bf0b10a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzB8MHwxfHNlYXJjaHw0fHxwcm9mZXNzaW9uYWwlMjBwb3J0cmFpdCUyMGhlYWRzaG90fGVufDB8fHx8MTc3NDUxNDM3N3ww&ixlib=rb-4.1.0&q=85",
+        "category": "team_member_1"
+      },
+      {
+        "url": "https://images.pexels.com/photos/30004323/pexels-photo-30004323.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "category": "team_member_2"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1576558656222-ba66febe3dec?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzB8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBwb3J0cmFpdCUyMGhlYWRzaG90fGVufDB8fHx8MTc3NDUxNDM3N3ww&ixlib=rb-4.1.0&q=85",
+        "category": "team_member_3"
+      }
+    ],
+    "workspaces": [
+      {
+        "url": "https://images.unsplash.com/photo-1718220216044-006f43e3a9b1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2MjJ8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBvZmZpY2UlMjB3b3Jrc3BhY2V8ZW58MHx8fHwxNzc0NTE0Mzc3fDA&ixlib=rb-4.1.0&q=85",
+        "category": "company_update_banner"
+      }
+    ]
+  },
+  "libraries_and_tools": {
+    "icons": "lucide-react (use lightweight, thin icons)",
+    "ui_components": "shadcn/ui (Button, Input, Card, Badge, Dialog, DropdownMenu, Avatar, Tabs)",
+    "animations": "framer-motion (for page transitions, tab underlines, and task list staggering)",
+    "routing": "react-router-dom"
+  },
+  "testing": {
+    "requirements": "All interactive elements (buttons, inputs, task items, nav links) MUST include data-testid attribute formatted as kebab-case, role-based."
+  },
+  "instructions_to_main_agent": [
+    "Build a sidebar layout mimicking ChatGPT (sidebar on left, main content on right).",
+    "For the task creation, build a sticky bottom input area like a chat prompt (e.g., 'Assign a task...').",
+    "Implement pure React + TailwindCSS + Shadcn without overcomplicating state management. Use context if needed.",
+    "Strictly follow the typography and color tokens defined here.",
+    "Use the provided image URLs for avatars in the task list and profile area."
+  ]
+}
