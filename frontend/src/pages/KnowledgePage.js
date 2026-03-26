@@ -76,20 +76,20 @@ export default function KnowledgePage({ user }) {
   }
 
   return (
-    <div data-testid="knowledge-page" className="space-y-8">
-      <div className="flex items-center justify-between">
+    <div data-testid="knowledge-page" className="space-y-6 sm:space-y-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="font-outfit text-4xl sm:text-5xl tracking-tight text-zinc-900 font-medium mb-2">
+          <h1 className="font-outfit text-3xl sm:text-4xl lg:text-5xl tracking-tight text-zinc-900 font-medium mb-2">
             Knowledge Base
           </h1>
-          <p className="font-plex text-base text-zinc-600 leading-relaxed">
+          <p className="font-plex text-sm sm:text-base text-zinc-600 leading-relaxed">
             Company resources and documentation
           </p>
         </div>
         <Button
           data-testid="create-article-button"
           onClick={() => setShowCreateDialog(true)}
-          className="rounded-full bg-zinc-900 text-white hover:bg-zinc-800 font-plex font-medium"
+          className="rounded-full bg-zinc-900 text-white hover:bg-zinc-800 font-plex font-medium w-full sm:w-auto"
         >
           <Plus className="w-4 h-4 mr-2" />
           New Article
@@ -109,7 +109,7 @@ export default function KnowledgePage({ user }) {
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {articles.map((article, index) => (
             <motion.div
               key={article.id}
@@ -118,7 +118,7 @@ export default function KnowledgePage({ user }) {
               transition={{ delay: index * 0.05 }}
               data-testid={`article-card-${index}`}
               onClick={() => setSelectedArticle(article)}
-              className="bg-white border border-zinc-200 rounded-2xl p-6 hover:shadow-sm hover:-translate-y-1 transition-all duration-200 cursor-pointer"
+              className="bg-white border border-zinc-200 rounded-xl sm:rounded-2xl p-4 sm:p-6 hover:shadow-sm hover:-translate-y-1 transition-all duration-200 cursor-pointer"
             >
               <div className="flex items-start gap-3 mb-4">
                 <div className="p-2 bg-blue-50 rounded-lg">

@@ -76,13 +76,13 @@ export default function UpdatesPage({ user }) {
   }
 
   return (
-    <div data-testid="updates-page" className="space-y-8">
-      <div className="flex items-center justify-between">
+    <div data-testid="updates-page" className="space-y-6 sm:space-y-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="font-outfit text-4xl sm:text-5xl tracking-tight text-zinc-900 font-medium mb-2">
+          <h1 className="font-outfit text-3xl sm:text-4xl lg:text-5xl tracking-tight text-zinc-900 font-medium mb-2">
             Company Updates
           </h1>
-          <p className="font-plex text-base text-zinc-600 leading-relaxed">
+          <p className="font-plex text-sm sm:text-base text-zinc-600 leading-relaxed">
             Latest news and announcements
           </p>
         </div>
@@ -90,7 +90,7 @@ export default function UpdatesPage({ user }) {
           <Button
             data-testid="create-update-button"
             onClick={() => setShowCreateDialog(true)}
-            className="rounded-full bg-zinc-900 text-white hover:bg-zinc-800 font-plex font-medium"
+            className="rounded-full bg-zinc-900 text-white hover:bg-zinc-800 font-plex font-medium w-full sm:w-auto"
           >
             <Plus className="w-4 h-4 mr-2" />
             New Update
@@ -113,7 +113,7 @@ export default function UpdatesPage({ user }) {
           )}
         </div>
       ) : (
-        <div className="max-w-3xl space-y-6">
+        <div className="max-w-3xl space-y-4 sm:space-y-6">
           {updates.map((update, index) => (
             <motion.div
               key={update.id}
@@ -121,7 +121,7 @@ export default function UpdatesPage({ user }) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
               data-testid={`update-item-${index}`}
-              className="bg-white border border-zinc-200 rounded-2xl p-8 hover:shadow-sm transition-all duration-200"
+              className="bg-white border border-zinc-200 rounded-xl sm:rounded-2xl p-6 sm:p-8 hover:shadow-sm transition-all duration-200"
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
