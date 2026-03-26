@@ -271,10 +271,11 @@ export default function TasksPage({ user }) {
 
       {/* Task Detail Dialog */}
       <Dialog open={!!selectedTask} onOpenChange={() => setSelectedTask(null)}>
-        <DialogContent data-testid="task-detail-dialog" className="max-w-2xl rounded-2xl">
+        <DialogContent data-testid="task-detail-dialog" className="max-w-2xl rounded-2xl" aria-describedby="task-detail-description">
           <DialogHeader>
             <DialogTitle className="font-outfit text-2xl font-medium">{selectedTask?.title}</DialogTitle>
           </DialogHeader>
+          <div id="task-detail-description" className="sr-only">Task details and comments</div>
           {selectedTask && (
             <div className="space-y-6">
               <div>

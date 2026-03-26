@@ -145,10 +145,11 @@ export default function KnowledgePage({ user }) {
 
       {/* Create Article Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent data-testid="create-article-dialog" className="max-w-2xl rounded-2xl">
+        <DialogContent data-testid="create-article-dialog" className="max-w-2xl rounded-2xl" aria-describedby="create-article-description">
           <DialogHeader>
             <DialogTitle className="font-outfit text-2xl font-medium">Create New Article</DialogTitle>
           </DialogHeader>
+          <div id="create-article-description" className="sr-only">Form to create a new knowledge base article</div>
           <form onSubmit={handleCreateArticle} className="space-y-4">
             <div>
               <label className="font-plex text-xs uppercase tracking-wider text-zinc-500 font-semibold mb-2 block">
@@ -217,7 +218,7 @@ export default function KnowledgePage({ user }) {
 
       {/* View Article Dialog */}
       <Dialog open={!!selectedArticle} onOpenChange={() => setSelectedArticle(null)}>
-        <DialogContent data-testid="view-article-dialog" className="max-w-3xl rounded-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent data-testid="view-article-dialog" className="max-w-3xl rounded-2xl max-h-[80vh] overflow-y-auto" aria-describedby="view-article-description">
           <DialogHeader>
             <div className="flex items-start justify-between">
               <div className="flex-1">
@@ -243,6 +244,7 @@ export default function KnowledgePage({ user }) {
               )}
             </div>
           </DialogHeader>
+          <div id="view-article-description" className="sr-only">Full article content and details</div>
           <div className="mt-6">
             <p className="font-plex text-base text-zinc-700 leading-relaxed whitespace-pre-wrap">
               {selectedArticle?.content}

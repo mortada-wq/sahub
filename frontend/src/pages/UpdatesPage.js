@@ -173,10 +173,11 @@ export default function UpdatesPage({ user }) {
 
       {/* Create Update Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent data-testid="create-update-dialog" className="max-w-2xl rounded-2xl">
+        <DialogContent data-testid="create-update-dialog" className="max-w-2xl rounded-2xl" aria-describedby="create-update-description">
           <DialogHeader>
             <DialogTitle className="font-outfit text-2xl font-medium">Post New Update</DialogTitle>
           </DialogHeader>
+          <div id="create-update-description" className="sr-only">Form to post a new company update or announcement</div>
           <form onSubmit={handleCreateUpdate} className="space-y-4">
             <div>
               <label className="font-plex text-xs uppercase tracking-wider text-zinc-500 font-semibold mb-2 block">
