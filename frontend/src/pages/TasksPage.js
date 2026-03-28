@@ -3,10 +3,10 @@ import { motion } from 'framer-motion';
 import axios from 'axios';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { Textarea } from '../components/ui/textarea';
 import { toast } from 'sonner';
 import { Send, Trash2, MessageSquare } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
+import { useLanguage } from '../context/LanguageContext';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -29,6 +29,7 @@ export default function TasksPage({ user }) {
   const [selectedTask, setSelectedTask] = useState(null);
   const [comment, setComment] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const { t } = useLanguage();
 
   useEffect(() => {
     loadData();
@@ -43,7 +44,7 @@ export default function TasksPage({ user }) {
       setTasks(tasksRes.data);
       setUsers(usersRes.data);
     } catch (error) {
-      toast.error('Failed to load tasks');
+      toast.error(t.failedToLoadTasks);
     } finally {
       setLoading(false);
     }
@@ -57,9 +58,9 @@ export default function TasksPage({ user }) {
       const response = await axios.post(`${API}/tasks`, newTask, getAuthHeader());
       setTasks([response.data, ...tasks]);
       setNewTask({ title: '', description: '', assigned_to: '', priority: 'medium', due_date: '' });
-      toast.success('Task created successfully!');
+      toast.success(t.taskCreated);
     } catch (error) {
-      toast.error('Failed to create task');
+      toast.error(t.failedToCreateTask);
     }
   };
 
@@ -68,9 +69,9 @@ export default function TasksPage({ user }) {
       const response = await axios.patch(`${API}/tasks/${taskId}`, { status: newStatus }, getAuthHeader());
       setTasks(tasks.map(t => t.id === taskId ? response.data : t));
       if (selectedTask?.id === taskId) setSelectedTask(response.data);
-      toast.success('Task updated!');
+      toast.success(t.taskUpdated);
     } catch (error) {
-      toast.error('Failed to update task');
+      toast.error(t.failedToUpdateTask);
     }
   };
 
@@ -78,9 +79,9 @@ export default function TasksPage({ user }) {
     try {
       await axios.delete(`${API}/tasks/${taskId}`, getAuthHeader());
       setTasks(tasks.filter(t => t.id !== taskId));
-      toast.success('Task deleted');
+      toast.success(t.taskDeleted);
     } catch (error) {
-      toast.error('Failed to delete task');
+      toast.error(t.failedToDeleteTask);
     }
   };
 
@@ -96,9 +97,9 @@ export default function TasksPage({ user }) {
       setSelectedTask(response.data);
       setTasks(tasks.map(t => t.id === selectedTask.id ? response.data : t));
       setComment('');
-      toast.success('Comment added');
+      toast.success(t.commentAdded);
     } catch (error) {
-      toast.error('Failed to add comment');
+      toast.error(t.failedToAddComment);
     }
   };
 
@@ -116,7 +117,7 @@ export default function TasksPage({ user }) {
     <div data-testid="tasks-page" className="h-full flex flex-col pb-48 sm:pb-36 lg:pb-32">
       <div className="mb-6">
         <h1 className="font-outfit text-3xl sm:text-4xl lg:text-5xl tracking-tight text-zinc-900 font-medium mb-4">
-          Tasks
+          {t.tasks}
         </h1>
         
         <div className="flex gap-2 flex-wrap">
@@ -131,7 +132,7 @@ export default function TasksPage({ user }) {
                   : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
               }`}
             >
-              {status === 'all' ? 'All' : status.replace('_', ' ')}
+              {({ all: t.all, todo: t.todo, in_progress: t.inProgress, completed: t.completedStatus })[status]}
             </button>
           ))}
         </div>
@@ -140,7 +141,7 @@ export default function TasksPage({ user }) {
       <div className="flex-1 overflow-y-auto space-y-3 mb-6">
         {filteredTasks.length === 0 ? (
           <div className="text-center py-12">
-            <p className="font-plex text-base text-zinc-500">No tasks found. Create one below!</p>
+            <p className="font-plex text-base text-zinc-500">{t.noTasksFound}</p>
           </div>
         ) : (
           filteredTasks.map((task, index) => (
@@ -181,7 +182,7 @@ export default function TasksPage({ user }) {
                     )}
                     {task.due_date && (
                       <span className="font-plex text-xs text-zinc-500">
-                        Due: {new Date(task.due_date).toLocaleDateString()}
+                        {t.due} {new Date(task.due_date).toLocaleDateString()}
                       </span>
                     )}
                     {task.comments?.length > 0 && (
@@ -192,7 +193,7 @@ export default function TasksPage({ user }) {
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-2 ml-4">
+                <div className="flex items-center gap-2 ms-4">
                   <button
                     data-testid={`delete-task-${index}-button`}
                     onClick={(e) => {
@@ -211,7 +212,7 @@ export default function TasksPage({ user }) {
       </div>
 
       {/* Chat-like sticky input */}
-      <div className="fixed bottom-0 left-0 right-0 lg:left-64 p-4 sm:p-6 bg-white/80 backdrop-blur-sm">
+      <div className="fixed bottom-0 left-0 right-0 lg:start-64 p-4 sm:p-6 bg-white/80 backdrop-blur-sm">
         <form onSubmit={handleCreateTask} className="bg-white border border-zinc-200 rounded-2xl shadow-lg p-3 sm:p-4 max-w-7xl mx-auto">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 mb-3">
             <select
@@ -220,7 +221,7 @@ export default function TasksPage({ user }) {
               onChange={(e) => setNewTask({ ...newTask, assigned_to: e.target.value })}
               className="px-3 py-2 rounded-xl border border-zinc-200 bg-white font-plex text-xs sm:text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900"
             >
-              <option value="">Assign to...</option>
+              <option value="">{t.assignTo}</option>
               {users.map(u => (
                 <option key={u.id} value={u.id}>{u.name}</option>
               ))}
@@ -231,9 +232,9 @@ export default function TasksPage({ user }) {
               onChange={(e) => setNewTask({ ...newTask, priority: e.target.value })}
               className="px-3 py-2 rounded-xl border border-zinc-200 bg-white font-plex text-xs sm:text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900"
             >
-              <option value="low">Low Priority</option>
-              <option value="medium">Medium Priority</option>
-              <option value="high">High Priority</option>
+              <option value="low">{t.lowPriority}</option>
+              <option value="medium">{t.mediumPriority}</option>
+              <option value="high">{t.highPriority}</option>
             </select>
             <Input
               data-testid="task-due-date-input"
@@ -246,14 +247,14 @@ export default function TasksPage({ user }) {
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <Input
               data-testid="task-title-input"
-              placeholder="Assign a task..."
+              placeholder={t.assignTask}
               value={newTask.title}
               onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
               className="flex-1 rounded-xl border-zinc-200 font-plex text-sm"
             />
             <Input
               data-testid="task-description-input"
-              placeholder="Description (optional)"
+              placeholder={t.descriptionOptional}
               value={newTask.description}
               onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
               className="flex-1 rounded-xl border-zinc-200 font-plex text-sm"
@@ -263,8 +264,8 @@ export default function TasksPage({ user }) {
               type="submit"
               className="rounded-full bg-zinc-900 text-white hover:bg-zinc-800 px-6 w-full sm:w-auto"
             >
-              <Send className="w-4 h-4 sm:mr-2" />
-              <span className="sm:inline hidden">Create</span>
+              <Send className="w-4 h-4 sm:me-2" />
+              <span className="sm:inline hidden">{t.create}</span>
             </Button>
           </div>
         </form>
@@ -280,7 +281,7 @@ export default function TasksPage({ user }) {
           {selectedTask && (
             <div className="space-y-6">
               <div>
-                <p className="font-plex text-sm text-zinc-600 mb-4">{selectedTask.description || 'No description'}</p>
+                <p className="font-plex text-sm text-zinc-600 mb-4">{selectedTask.description || t.noDescription}</p>
                 <div className="flex items-center gap-2 flex-wrap mb-4">
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
                     selectedTask.priority === 'high' ? 'bg-red-50 text-red-700 border-red-200' :
@@ -291,7 +292,7 @@ export default function TasksPage({ user }) {
                   </span>
                   {selectedTask.assigned_to_name && (
                     <span className="font-plex text-xs text-zinc-600">
-                      Assigned to: {selectedTask.assigned_to_name}
+                      {t.assignedToLabel} {selectedTask.assigned_to_name}
                     </span>
                   )}
                 </div>
@@ -307,14 +308,14 @@ export default function TasksPage({ user }) {
                           : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
                       }`}
                     >
-                      {status.replace('_', ' ')}
+                      {({ todo: t.todo, in_progress: t.inProgress, completed: t.completedStatus })[status]}
                     </button>
                   ))}
                 </div>
               </div>
 
               <div>
-                <h4 className="font-plex text-sm font-semibold text-zinc-900 mb-3">Comments ({selectedTask.comments?.length || 0})</h4>
+                <h4 className="font-plex text-sm font-semibold text-zinc-900 mb-3">{t.comments(selectedTask.comments?.length || 0)}</h4>
                 <div className="space-y-2 mb-4 max-h-48 overflow-y-auto">
                   {selectedTask.comments?.map((c) => (
                     <div key={c.id} className="bg-zinc-50 rounded-xl p-3">
@@ -328,7 +329,7 @@ export default function TasksPage({ user }) {
                 <div className="flex gap-2">
                   <Input
                     data-testid="comment-input"
-                    placeholder="Add a comment..."
+                    placeholder={t.addComment}
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleAddComment()}

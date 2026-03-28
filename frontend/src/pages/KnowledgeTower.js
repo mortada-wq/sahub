@@ -22,6 +22,7 @@ import {
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
+import { useLanguage } from '../context/LanguageContext';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -73,6 +74,7 @@ export default function KnowledgeTower({ user }) {
   const [showBgColorPicker, setShowBgColorPicker] = useState(false);
   const contentEditableRef = useRef(null);
   const saveTimeoutRef = useRef(null);
+  const { t } = useLanguage();
 
   useEffect(() => {
     loadData();
@@ -87,7 +89,7 @@ export default function KnowledgeTower({ user }) {
       setFolders(foldersRes.data);
       setFiles(filesRes.data);
     } catch (error) {
-      toast.error('Failed to load Knowledge Tower');
+      toast.error(t.towerFailedLoad);
     }
   };
 
@@ -103,9 +105,9 @@ export default function KnowledgeTower({ user }) {
       setNewItemName('');
       setNewItemParent(null);
       setShowNewFolderDialog(false);
-      toast.success('Folder created');
+      toast.success(t.towerFolderCreated);
     } catch (error) {
-      toast.error('Failed to create folder');
+      toast.error(t.towerFolderFailed);
     }
   };
 
@@ -121,9 +123,9 @@ export default function KnowledgeTower({ user }) {
       setNewItemName('');
       setNewItemParent(null);
       setShowNewFileDialog(false);
-      toast.success('File created');
+      toast.success(t.towerFileCreated);
     } catch (error) {
-      toast.error('Failed to create file');
+      toast.error(t.towerFileFailed);
     }
   };
 
@@ -133,7 +135,7 @@ export default function KnowledgeTower({ user }) {
       setSelectedFile(response.data);
       setEditingContent(response.data.content);
     } catch (error) {
-      toast.error('Failed to open file');
+      toast.error(t.towerFileOpenFailed);
     }
   };
 
@@ -147,9 +149,9 @@ export default function KnowledgeTower({ user }) {
         getAuthHeader()
       );
       setSelectedFile({ ...selectedFile, content: editingContent });
-      toast.success('Saved');
+      toast.success(t.towerSaved);
     } catch (error) {
-      toast.error('Failed to save');
+      toast.error(t.towerSaveFailed);
     } finally {
       setSaving(false);
     }
@@ -176,9 +178,9 @@ export default function KnowledgeTower({ user }) {
       if (selectedFile?.id === fileId) {
         setSelectedFile(null);
       }
-      toast.success('File deleted');
+      toast.success(t.towerFileDeleted);
     } catch (error) {
-      toast.error('Failed to delete file');
+      toast.error(t.towerFileDeleteFailed);
     }
   };
 
@@ -188,9 +190,9 @@ export default function KnowledgeTower({ user }) {
       await axios.delete(`${API}/tower/folders/${folderId}`, getAuthHeader());
       setFolders(folders.filter(f => f.id !== folderId));
       setFiles(files.filter(f => f.folder_id !== folderId));
-      toast.success('Folder deleted');
+      toast.success(t.towerFolderDeleted);
     } catch (error) {
-      toast.error('Failed to delete folder');
+      toast.error(t.towerFolderDeleteFailed);
     }
   };
 
@@ -202,7 +204,7 @@ export default function KnowledgeTower({ user }) {
       const response = await axios.get(`${API}/tower/search?q=${encodeURIComponent(searchQuery)}`, getAuthHeader());
       setSearchResults(response.data);
     } catch (error) {
-      toast.error('Search failed');
+      toast.error(t.towerSearchFailed);
     } finally {
       setSearching(false);
     }
@@ -305,7 +307,7 @@ export default function KnowledgeTower({ user }) {
             <div className="p-4 border-b border-zinc-200">
               <div className="flex items-center gap-2 mb-4">
                 <Library className="w-5 h-5 text-zinc-900" />
-                <h2 className="font-outfit text-lg font-medium text-zinc-900">Knowledge Tower</h2>
+                <h2 className="font-outfit text-lg font-medium text-zinc-900">{t.towerTitle}</h2>
               </div>
               <div className="flex gap-2">
                 <Button
@@ -314,8 +316,8 @@ export default function KnowledgeTower({ user }) {
                   variant="outline"
                   className="flex-1 rounded-full text-xs"
                 >
-                  <Plus className="w-3 h-3 mr-1" />
-                  Folder
+                  <Plus className="w-3 h-3 me-1" />
+                  {t.towerFolder}
                 </Button>
                 <Button
                   data-testid="new-file-button"
@@ -323,8 +325,8 @@ export default function KnowledgeTower({ user }) {
                   variant="outline"
                   className="flex-1 rounded-full text-xs"
                 >
-                  <Plus className="w-3 h-3 mr-1" />
-                  File
+                  <Plus className="w-3 h-3 me-1" />
+                  {t.towerFile}
                 </Button>
               </div>
             </div>
@@ -383,11 +385,11 @@ export default function KnowledgeTower({ user }) {
           {!selectedFile ? (
             <div className="flex flex-col items-center justify-center h-full p-8">
               <div className="text-6xl mb-4">📚</div>
-              <h3 className="font-outfit text-2xl font-medium text-zinc-900 mb-2">مرحبا! أنا صغبوب</h3>
-              <p className="font-plex text-base text-zinc-600 mb-8">Ask me anything about what's in the Knowledge Tower</p>
+              <h3 className="font-outfit text-2xl font-medium text-zinc-900 mb-2">{t.towerSaghboopWelcome}</h3>
+              <p className="font-plex text-base text-zinc-600 mb-8">{t.towerSaghboopSubtitle}</p>
               {files.length > 0 && (
                 <div className="w-full max-w-2xl">
-                  <h4 className="font-plex text-sm font-semibold text-zinc-900 mb-3">Recent Files</h4>
+                  <h4 className="font-plex text-sm font-semibold text-zinc-900 mb-3">{t.towerRecentFiles}</h4>
                   <div className="grid gap-2">
                     {files.slice(0, 5).map(file => (
                       <div
@@ -412,12 +414,12 @@ export default function KnowledgeTower({ user }) {
                 <div className="flex-1">
                   <h2 className="font-outfit text-2xl font-medium text-zinc-900 mb-2">{selectedFile.name}</h2>
                   <div className="flex items-center gap-4 text-xs text-zinc-500">
-                    <span>Created {new Date(selectedFile.created_at).toLocaleDateString()}</span>
-                    <span>Modified {new Date(selectedFile.updated_at).toLocaleDateString()}</span>
+                    <span>{t.towerCreated(new Date(selectedFile.created_at).toLocaleDateString())}</span>
+                    <span>{t.towerModified(new Date(selectedFile.updated_at).toLocaleDateString())}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {saving && <span className="text-xs text-zinc-500">Saving...</span>}
+                  {saving && <span className="text-xs text-zinc-500">{t.towerSaving}</span>}
                   <Button
                     onClick={() => setShowBgColorPicker(true)}
                     variant="outline"
@@ -453,14 +455,14 @@ export default function KnowledgeTower({ user }) {
                 dangerouslySetInnerHTML={{ __html: editingContent }}
                 style={{ backgroundColor: selectedFile.bg_color, color: isDarkMode ? '#fff' : '#000' }}
                 className="min-h-[500px] p-6 rounded-xl border border-zinc-200 focus:outline-none focus:ring-2 focus:ring-zinc-900 font-plex text-base leading-relaxed"
-                placeholder="Paste or type your content here..."
+                data-placeholder={t.towerContentPlaceholder}
               />
             </div>
           )}
         </div>
 
         {/* Saghboop Chat Input */}
-        <div className="fixed bottom-0 left-0 right-0 lg:left-64 p-4 bg-white/80 backdrop-blur-sm border-t border-zinc-200">
+        <div className="fixed bottom-0 left-0 right-0 lg:start-64 p-4 bg-white/80 backdrop-blur-sm border-t border-zinc-200">
           {showSaghboopResponse && searchResults.length > 0 && (
             <motion.div
               initial={{ y: 20, opacity: 0 }}
@@ -470,7 +472,7 @@ export default function KnowledgeTower({ user }) {
               <div className="flex items-start gap-3 mb-4">
                 <div className="text-2xl">📚</div>
                 <div className="flex-1">
-                  <h4 className="font-outfit text-lg font-medium text-zinc-900 mb-2">Saghboop Found {searchResults.length} Results</h4>
+                  <h4 className="font-outfit text-lg font-medium text-zinc-900 mb-2">{t.towerSaghboopFound(searchResults.length)}</h4>
                   <div className="space-y-3">
                     {searchResults.map(result => (
                       <div
@@ -499,7 +501,7 @@ export default function KnowledgeTower({ user }) {
           <div className="flex gap-2 max-w-4xl mx-auto">
             <Input
               data-testid="saghboop-input"
-              placeholder="Ask Saghboop about anything in the tower..."
+              placeholder={t.towerSaghboopPlaceholder}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && searchTower()}
@@ -521,39 +523,39 @@ export default function KnowledgeTower({ user }) {
       <Dialog open={showNewFolderDialog} onOpenChange={setShowNewFolderDialog}>
         <DialogContent className="rounded-2xl">
           <DialogHeader>
-            <DialogTitle>Create New Folder</DialogTitle>
+            <DialogTitle>{t.towerCreateFolder}</DialogTitle>
           </DialogHeader>
           <Input
-            placeholder="Folder name"
+            placeholder={t.towerFolderName}
             value={newItemName}
             onChange={(e) => setNewItemName(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && createFolder()}
             className="rounded-xl"
           />
-          <Button onClick={createFolder} className="rounded-full bg-zinc-900 text-white">Create</Button>
+          <Button onClick={createFolder} className="rounded-full bg-zinc-900 text-white">{t.towerCreate}</Button>
         </DialogContent>
       </Dialog>
 
       <Dialog open={showNewFileDialog} onOpenChange={setShowNewFileDialog}>
         <DialogContent className="rounded-2xl">
           <DialogHeader>
-            <DialogTitle>Create New File</DialogTitle>
+            <DialogTitle>{t.towerCreateFile}</DialogTitle>
           </DialogHeader>
           <Input
-            placeholder="File name"
+            placeholder={t.towerFileName}
             value={newItemName}
             onChange={(e) => setNewItemName(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && createFile()}
             className="rounded-xl"
           />
-          <Button onClick={createFile} className="rounded-full bg-zinc-900 text-white">Create</Button>
+          <Button onClick={createFile} className="rounded-full bg-zinc-900 text-white">{t.towerCreate}</Button>
         </DialogContent>
       </Dialog>
 
       <Dialog open={showBgColorPicker} onOpenChange={setShowBgColorPicker}>
         <DialogContent className="rounded-2xl">
           <DialogHeader>
-            <DialogTitle>Background Color</DialogTitle>
+            <DialogTitle>{t.towerBgColor}</DialogTitle>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-2">
             {BG_COLORS.map(color => (
@@ -564,9 +566,9 @@ export default function KnowledgeTower({ user }) {
                     await axios.patch(`${API}/tower/files/${selectedFile.id}`, { bg_color: color.value }, getAuthHeader());
                     setSelectedFile({ ...selectedFile, bg_color: color.value });
                     setShowBgColorPicker(false);
-                    toast.success('Background updated');
+                    toast.success(t.towerBgUpdated);
                   } catch (error) {
-                    toast.error('Failed to update');
+                    toast.error(t.towerBgUpdateFailed);
                   }
                 }}
                 style={{ backgroundColor: color.value }}

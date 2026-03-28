@@ -7,6 +7,7 @@ import { Textarea } from '../components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { toast } from 'sonner';
 import { FileText, Plus, Trash2 } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -25,6 +26,7 @@ export default function KnowledgePage({ user }) {
     content: '',
     category: 'general'
   });
+  const { t } = useLanguage();
 
   useEffect(() => {
     loadArticles();
@@ -35,7 +37,7 @@ export default function KnowledgePage({ user }) {
       const response = await axios.get(`${API}/articles`, getAuthHeader());
       setArticles(response.data);
     } catch (error) {
-      toast.error('Failed to load articles');
+      toast.error(t.failedToLoadArticles);
     } finally {
       setLoading(false);
     }
@@ -50,9 +52,9 @@ export default function KnowledgePage({ user }) {
       setArticles([response.data, ...articles]);
       setNewArticle({ title: '', content: '', category: 'general' });
       setShowCreateDialog(false);
-      toast.success('Article created successfully!');
+      toast.success(t.articleCreated);
     } catch (error) {
-      toast.error('Failed to create article');
+      toast.error(t.failedToCreateArticle);
     }
   };
 
@@ -61,9 +63,9 @@ export default function KnowledgePage({ user }) {
       await axios.delete(`${API}/articles/${articleId}`, getAuthHeader());
       setArticles(articles.filter(a => a.id !== articleId));
       setSelectedArticle(null);
-      toast.success('Article deleted');
+      toast.success(t.articleDeleted);
     } catch (error) {
-      toast.error('Failed to delete article');
+      toast.error(t.failedToDeleteArticle);
     }
   };
 
@@ -80,10 +82,10 @@ export default function KnowledgePage({ user }) {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="font-outfit text-3xl sm:text-4xl lg:text-5xl tracking-tight text-zinc-900 font-medium mb-2">
-            Knowledge Base
+            {t.knowledgeBaseTitle}
           </h1>
           <p className="font-plex text-sm sm:text-base text-zinc-600 leading-relaxed">
-            Company resources and documentation
+            {t.knowledgeSubtitle}
           </p>
         </div>
         <Button
@@ -91,21 +93,21 @@ export default function KnowledgePage({ user }) {
           onClick={() => setShowCreateDialog(true)}
           className="rounded-full bg-zinc-900 text-white hover:bg-zinc-800 font-plex font-medium w-full sm:w-auto"
         >
-          <Plus className="w-4 h-4 mr-2" />
-          New Article
+          <Plus className="w-4 h-4 me-2" />
+          {t.newArticle}
         </Button>
       </div>
 
       {articles.length === 0 ? (
         <div className="text-center py-16 border border-zinc-200 rounded-2xl">
           <FileText className="w-12 h-12 text-zinc-300 mx-auto mb-4" />
-          <p className="font-plex text-base text-zinc-500 mb-4">No articles yet</p>
+          <p className="font-plex text-base text-zinc-500 mb-4">{t.noArticlesYet}</p>
           <Button
             data-testid="create-first-article-button"
             onClick={() => setShowCreateDialog(true)}
             className="rounded-full bg-zinc-900 text-white hover:bg-zinc-800"
           >
-            Create First Article
+            {t.createFirstArticle}
           </Button>
         </div>
       ) : (
@@ -135,7 +137,7 @@ export default function KnowledgePage({ user }) {
                 {article.content}
               </p>
               <div className="flex items-center justify-between text-xs text-zinc-500">
-                <span className="font-plex">By {article.created_by_name}</span>
+                <span className="font-plex">{t.by} {article.created_by_name}</span>
                 <span className="font-plex">{new Date(article.created_at).toLocaleDateString()}</span>
               </div>
             </motion.div>
@@ -147,26 +149,26 @@ export default function KnowledgePage({ user }) {
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent data-testid="create-article-dialog" className="max-w-2xl rounded-2xl" aria-describedby="create-article-description">
           <DialogHeader>
-            <DialogTitle className="font-outfit text-2xl font-medium">Create New Article</DialogTitle>
+            <DialogTitle className="font-outfit text-2xl font-medium">{t.createNewArticle}</DialogTitle>
           </DialogHeader>
           <div id="create-article-description" className="sr-only">Form to create a new knowledge base article</div>
           <form onSubmit={handleCreateArticle} className="space-y-4">
             <div>
               <label className="font-plex text-xs uppercase tracking-wider text-zinc-500 font-semibold mb-2 block">
-                Title
+                {t.title}
               </label>
               <Input
                 data-testid="article-title-input"
                 value={newArticle.title}
                 onChange={(e) => setNewArticle({ ...newArticle, title: e.target.value })}
                 className="rounded-xl border-zinc-200"
-                placeholder="Article title..."
+                placeholder={t.articleTitlePlaceholder}
                 required
               />
             </div>
             <div>
               <label className="font-plex text-xs uppercase tracking-wider text-zinc-500 font-semibold mb-2 block">
-                Category
+                {t.category}
               </label>
               <select
                 data-testid="article-category-select"
@@ -174,23 +176,23 @@ export default function KnowledgePage({ user }) {
                 onChange={(e) => setNewArticle({ ...newArticle, category: e.target.value })}
                 className="w-full px-3 py-2 rounded-xl border border-zinc-200 bg-white font-plex text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900"
               >
-                <option value="general">General</option>
-                <option value="onboarding">Onboarding</option>
-                <option value="processes">Processes</option>
-                <option value="guidelines">Guidelines</option>
-                <option value="technical">Technical</option>
+                <option value="general">{t.categoryGeneral}</option>
+                <option value="onboarding">{t.categoryOnboarding}</option>
+                <option value="processes">{t.categoryProcesses}</option>
+                <option value="guidelines">{t.categoryGuidelines}</option>
+                <option value="technical">{t.categoryTechnical}</option>
               </select>
             </div>
             <div>
               <label className="font-plex text-xs uppercase tracking-wider text-zinc-500 font-semibold mb-2 block">
-                Content
+                {t.content}
               </label>
               <Textarea
                 data-testid="article-content-textarea"
                 value={newArticle.content}
                 onChange={(e) => setNewArticle({ ...newArticle, content: e.target.value })}
                 className="rounded-xl border-zinc-200 min-h-[200px]"
-                placeholder="Write your article content..."
+                placeholder={t.articleContentPlaceholder}
                 required
               />
             </div>
@@ -202,14 +204,14 @@ export default function KnowledgePage({ user }) {
                 variant="outline"
                 className="rounded-full"
               >
-                Cancel
+                {t.cancel}
               </Button>
               <Button
                 data-testid="submit-article-button"
                 type="submit"
                 className="rounded-full bg-zinc-900 text-white hover:bg-zinc-800"
               >
-                Create Article
+                {t.createArticle}
               </Button>
             </div>
           </form>
@@ -229,7 +231,7 @@ export default function KnowledgePage({ user }) {
                   {selectedArticle?.title}
                 </DialogTitle>
                 <p className="font-plex text-sm text-zinc-500">
-                  By {selectedArticle?.created_by_name} • {selectedArticle && new Date(selectedArticle.created_at).toLocaleDateString()}
+                  {t.by} {selectedArticle?.created_by_name} • {selectedArticle && new Date(selectedArticle.created_at).toLocaleDateString()}
                 </p>
               </div>
               {(user.role === 'admin' || user.role === 'manager' || selectedArticle?.created_by === user.id) && (
