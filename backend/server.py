@@ -644,6 +644,55 @@ async def search_tower(q: str, current_user: dict = Depends(get_current_user)):
     return results
 
 
+# ============= KNOWLEDGE TOWER - SEED DATA =============
+
+@api_router.post("/tower/seed")
+async def seed_tower_data(current_user: dict = Depends(get_current_user)):
+    """Seed the Knowledge Tower with sample data for demonstration."""
+    now = datetime.now(timezone.utc).isoformat()
+
+    # Check if already seeded (look for the welcome file)
+    existing = await db.tower_files.find_one({"name": "Welcome to Knowledge Tower"})
+    if existing:
+        return {"message": "Tower already seeded", "seeded": False}
+
+    created_by = current_user["id"]
+    created_by_name = current_user["name"]
+
+    # Create top-level folders
+    folder_project = {"id": str(uuid.uuid4()), "name": "Project Reports", "parent_id": None, "color": "blue", "created_by": created_by, "created_at": now, "updated_at": now, "order": 0}
+    folder_meetings = {"id": str(uuid.uuid4()), "name": "Meeting Notes", "parent_id": None, "color": "emerald", "created_by": created_by, "created_at": now, "updated_at": now, "order": 1}
+    folder_guidelines = {"id": str(uuid.uuid4()), "name": "Guidelines", "parent_id": None, "color": "violet", "created_by": created_by, "created_at": now, "updated_at": now, "order": 2}
+
+    await db.tower_folders.insert_many([folder_project, folder_meetings, folder_guidelines])
+
+    # Create sub-folder inside Guidelines
+    folder_design = {"id": str(uuid.uuid4()), "name": "Design Standards", "parent_id": folder_guidelines["id"], "color": "pink", "created_by": created_by, "created_at": now, "updated_at": now, "order": 0}
+    await db.tower_folders.insert_one(folder_design)
+
+    # Sample file contents
+    q1_content = "<h1>Q1 2026 Progress Report</h1><p>This report summarizes the team's progress during Q1 2026. Overall, we have made significant strides across all project verticals.</p><h2>Key Achievements</h2><ul><li>Launched three major features ahead of schedule</li><li>Reduced bug backlog by 40%</li><li>Onboarded two new team members successfully</li><li>Improved API response times by 25%</li></ul><h2>Challenges</h2><p>Integration with third-party services proved more complex than anticipated. We allocated additional sprint cycles to address these dependencies.</p><h2>Upcoming Milestones</h2><p>Q2 will focus on scalability improvements, user experience enhancements, and expanding our test coverage to above 85%.</p>"
+    retro_content = "<h1>Sprint Retrospective — March</h1><p>The March sprint retrospective highlighted several areas of improvement and celebrated team successes.</p><h2>What Went Well</h2><ul><li>Daily standups were concise and effective</li><li>Code review turnaround improved to under 24 hours</li><li>Deployment pipeline ran without issues</li></ul><h2>What Needs Improvement</h2><ul><li>Estimation accuracy — several tasks took longer than expected</li><li>Documentation was sometimes written after the fact</li></ul><h2>Action Items</h2><ol><li>Introduce story-point poker for all new tickets</li><li>Require documentation PR alongside feature PR</li></ol>"
+    standup_content = "<h1>Team Standup — March 25</h1><p><strong>Attendees:</strong> All team members present.</p><h2>Updates</h2><ul><li><strong>Alice:</strong> Completed the authentication module refactor. Moving to integration tests today.</li><li><strong>Bob:</strong> Still working on the dashboard charts — expects to finish by EOD.</li><li><strong>Carol:</strong> Reviewed three PRs yesterday. Starting on the notification system.</li></ul><h2>Blockers</h2><p>Bob needs design approval for the chart color scheme before finalising the implementation.</p>"
+    client_content = "<h1>Client Review Notes</h1><p>Client review session held on March 22, 2026. Attendees included the product manager, lead developer, and two client representatives.</p><h2>Feedback Received</h2><ul><li>The new dashboard layout is well-received — clients appreciate the clean design</li><li>Request to add export-to-PDF functionality for reports</li><li>Minor concern about load times on the analytics page with large datasets</li></ul><h2>Next Steps</h2><ol><li>Create a ticket for PDF export feature — priority: medium</li><li>Investigate and optimise analytics queries</li><li>Schedule follow-up demo in 3 weeks</li></ol>"
+    ui_guide_content = "<h1>UI Component Guide</h1><p>This guide documents our design system components and usage guidelines.</p><h2>Typography</h2><p>Use <strong>Outfit</strong> for headings and <strong>IBM Plex Sans</strong> for body text. Maintain a clear typographic hierarchy.</p><h2>Colors</h2><p>Our palette is zinc-based. Primary actions use <code>zinc-900</code>. Avoid pure black (#000) — use <code>#18181B</code> instead.</p><h2>Buttons</h2><ul><li>All buttons use <code>rounded-full</code></li><li>Primary: <code>bg-zinc-900 text-white</code></li><li>Outline: <code>border-zinc-200 hover:bg-zinc-50</code></li></ul><h2>Cards</h2><p>Cards use <code>rounded-xl sm:rounded-2xl border border-zinc-200</code>. Avoid heavy shadows — prefer subtle borders.</p>"
+    checklist_content = "<h1>Code Review Checklist</h1><p>Use this checklist when reviewing pull requests to ensure consistency and quality.</p><h2>Before Approving</h2><ul><li>Does the code solve the stated problem?</li><li>Are there adequate tests for new functionality?</li><li>Is the code readable and well-documented?</li><li>Are there any obvious performance issues?</li><li>Does the PR include relevant documentation updates?</li></ul><h2>Security</h2><ul><li>No secrets or credentials committed</li><li>Input validation is present where needed</li><li>No new SQL/injection vulnerabilities introduced</li></ul>"
+    welcome_content = "<h1>Welcome to Knowledge Tower 📚</h1><p>Knowledge Tower is your team's shared knowledge management system — a place to store, organise, and search AI-generated reports, meeting notes, guidelines, and documents.</p><h2>Getting Started</h2><ul><li><strong>Browse</strong> the file tree on the left to explore existing documents</li><li><strong>Click any file</strong> to open and read it</li><li><strong>Create folders and files</strong> using the + buttons in the tree panel</li><li><strong>Right-click</strong> any file or folder for options like rename, recolor, and more</li></ul><h2>Saghboop AI (صغبوب)</h2><p>Use the search bar at the bottom to ask Saghboop anything about the content stored in the tower. Saghboop will search through all files and surface relevant results instantly.</p><h2>Tips</h2><ol><li>Drag files between folders to reorganise</li><li>Change the background colour of any file to suit your reading preference</li><li>Use colour labels to categorise files at a glance</li></ol>"
+
+    files = [
+        {"id": str(uuid.uuid4()), "name": "Q1 2026 Progress Report", "folder_id": folder_project["id"], "content": q1_content, "content_text": html_to_text(q1_content), "color": "blue", "bg_color": "#FFFFFF", "created_by": created_by, "created_by_name": created_by_name, "created_at": now, "updated_at": now, "order": 0},
+        {"id": str(uuid.uuid4()), "name": "Sprint Retrospective - March", "folder_id": folder_project["id"], "content": retro_content, "content_text": html_to_text(retro_content), "color": "blue", "bg_color": "#FFFFFF", "created_by": created_by, "created_by_name": created_by_name, "created_at": now, "updated_at": now, "order": 1},
+        {"id": str(uuid.uuid4()), "name": "Team Standup - March 25", "folder_id": folder_meetings["id"], "content": standup_content, "content_text": html_to_text(standup_content), "color": "emerald", "bg_color": "#FFFFFF", "created_by": created_by, "created_by_name": created_by_name, "created_at": now, "updated_at": now, "order": 0},
+        {"id": str(uuid.uuid4()), "name": "Client Review Notes", "folder_id": folder_meetings["id"], "content": client_content, "content_text": html_to_text(client_content), "color": "emerald", "bg_color": "#FFFFFF", "created_by": created_by, "created_by_name": created_by_name, "created_at": now, "updated_at": now, "order": 1},
+        {"id": str(uuid.uuid4()), "name": "UI Component Guide", "folder_id": folder_design["id"], "content": ui_guide_content, "content_text": html_to_text(ui_guide_content), "color": "pink", "bg_color": "#FFFFFF", "created_by": created_by, "created_by_name": created_by_name, "created_at": now, "updated_at": now, "order": 0},
+        {"id": str(uuid.uuid4()), "name": "Code Review Checklist", "folder_id": folder_guidelines["id"], "content": checklist_content, "content_text": html_to_text(checklist_content), "color": "violet", "bg_color": "#FFFFFF", "created_by": created_by, "created_by_name": created_by_name, "created_at": now, "updated_at": now, "order": 1},
+        {"id": str(uuid.uuid4()), "name": "Welcome to Knowledge Tower", "folder_id": None, "content": welcome_content, "content_text": html_to_text(welcome_content), "color": "amber", "bg_color": "#FFF8F0", "created_by": created_by, "created_by_name": created_by_name, "created_at": now, "updated_at": now, "order": 0},
+    ]
+
+    await db.tower_files.insert_many(files)
+    return {"message": "Tower seeded successfully", "seeded": True, "folders": 4, "files": len(files)}
+
+
 # Include the router in the main app
 app.include_router(api_router)
 

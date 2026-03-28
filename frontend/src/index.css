@@ -113,3 +113,11 @@ code {
         border-bottom-color: inherit;
     }
 }
+
+/* Knowledge Tower — contentEditable placeholder */
+.tower-editor:empty::before {
+  content: attr(data-placeholder);
+  color: #a1a1aa;
+  pointer-events: none;
+  display: block;
+}

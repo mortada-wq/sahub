@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { toast } from 'sonner';
 import {
   Library,
   Folder,
+  FolderOpen,
   FileText,
   Plus,
   Trash2,
@@ -16,8 +17,11 @@ import {
   X,
   Menu,
   Send,
-  FolderOpen,
-  Save
+  Copy,
+  Edit2,
+  MoveRight,
+  FolderPlus,
+  FilePlus
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -31,25 +35,34 @@ const getAuthHeader = () => ({
 });
 
 const COLORS = [
-  { name: 'zinc', class: 'text-zinc-500', bg: 'bg-zinc-50' },
-  { name: 'red', class: 'text-red-500', bg: 'bg-red-50' },
-  { name: 'orange', class: 'text-orange-500', bg: 'bg-orange-50' },
-  { name: 'amber', class: 'text-amber-500', bg: 'bg-amber-50' },
-  { name: 'emerald', class: 'text-emerald-500', bg: 'bg-emerald-50' },
-  { name: 'blue', class: 'text-blue-500', bg: 'bg-blue-50' },
-  { name: 'violet', class: 'text-violet-500', bg: 'bg-violet-50' },
-  { name: 'pink', class: 'text-pink-500', bg: 'bg-pink-50' }
+  { name: 'zinc',    class: 'text-zinc-500',    dot: 'bg-zinc-400'    },
+  { name: 'red',     class: 'text-red-500',     dot: 'bg-red-500'     },
+  { name: 'orange',  class: 'text-orange-500',  dot: 'bg-orange-500'  },
+  { name: 'amber',   class: 'text-amber-500',   dot: 'bg-amber-500'   },
+  { name: 'emerald', class: 'text-emerald-500', dot: 'bg-emerald-500' },
+  { name: 'blue',    class: 'text-blue-500',    dot: 'bg-blue-500'    },
+  { name: 'violet',  class: 'text-violet-500',  dot: 'bg-violet-500'  },
+  { name: 'pink',    class: 'text-pink-500',    dot: 'bg-pink-500'    },
 ];
 
 const BG_COLORS = [
-  { name: 'White', value: '#FFFFFF' },
+  { name: 'White',      value: '#FFFFFF' },
   { name: 'Warm Cream', value: '#FFF8F0' },
   { name: 'Light Gray', value: '#F4F4F5' },
-  { name: 'Soft Blue', value: '#F0F4FF' },
+  { name: 'Soft Blue',  value: '#F0F4FF' },
   { name: 'Soft Green', value: '#F0FFF4' },
-  { name: 'Soft Pink', value: '#FFF0F5' },
-  { name: 'Dark Mode', value: '#18181B' }
+  { name: 'Soft Pink',  value: '#FFF0F5' },
+  { name: 'Dark Mode',  value: '#18181B' },
 ];
+
+const getColorClass = (colorName) =>
+  (COLORS.find(c => c.name === colorName) || COLORS[0]).class;
+
+const getDotClass = (colorName) =>
+  (COLORS.find(c => c.name === colorName) || COLORS[0]).dot;
+
+const AUTO_SAVE_DELAY_MS = 2000;
+const SAVED_INDICATOR_DURATION_MS = 2000;
 
 export default function KnowledgeTower({ user }) {
   const [folders, setFolders] = useState([]);
@@ -57,20 +70,39 @@ export default function KnowledgeTower({ user }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [expandedFolders, setExpandedFolders] = useState(new Set());
   const [treeVisible, setTreeVisible] = useState(true);
-  const [viewMode, setViewMode] = useState('shb'); // 'shb' or 'tree'
+  const [mobileTreeOpen, setMobileTreeOpen] = useState(false);
+
+  // Saghboop search
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [showSaghboopResponse, setShowSaghboopResponse] = useState(false);
+
+  // Editor
   const [editingContent, setEditingContent] = useState('');
   const [saving, setSaving] = useState(false);
+  const [savedIndicator, setSavedIndicator] = useState(false);
+
+  // Dialogs
   const [showNewFolderDialog, setShowNewFolderDialog] = useState(false);
   const [showNewFileDialog, setShowNewFileDialog] = useState(false);
+  const [showRenameDialog, setShowRenameDialog] = useState(false);
+  const [showColorPickerDialog, setShowColorPickerDialog] = useState(false);
+  const [showBgColorDialog, setShowBgColorDialog] = useState(false);
+  const [showMoveDialog, setShowMoveDialog] = useState(false);
+
   const [newItemName, setNewItemName] = useState('');
   const [newItemParent, setNewItemParent] = useState(null);
-  const [contextMenu, setContextMenu] = useState(null);
-  const [showColorPicker, setShowColorPicker] = useState(false);
-  const [showBgColorPicker, setShowBgColorPicker] = useState(false);
+
+  // Context menu
+  const [contextMenuTarget, setContextMenuTarget] = useState(null);
+  const [contextMenuPos, setContextMenuPos] = useState({ x: 0, y: 0 });
+  const [showContextMenu, setShowContextMenu] = useState(false);
+
+  // Drag and drop
+  const [dragging, setDragging] = useState(null);
+  const [dragOver, setDragOver] = useState(undefined);
+
   const contentEditableRef = useRef(null);
   const saveTimeoutRef = useRef(null);
 
@@ -78,33 +110,44 @@ export default function KnowledgeTower({ user }) {
     loadData();
   }, []);
 
+  // Close context menu on outside click
+  useEffect(() => {
+    const close = () => setShowContextMenu(false);
+    window.addEventListener('click', close);
+    return () => window.removeEventListener('click', close);
+  }, []);
+
+  // ── Data loading ──────────────────────────────────────────────────────────
+
   const loadData = async () => {
     try {
       const [foldersRes, filesRes] = await Promise.all([
         axios.get(`${API}/tower/folders`, getAuthHeader()),
-        axios.get(`${API}/tower/files`, getAuthHeader())
+        axios.get(`${API}/tower/files`, getAuthHeader()),
       ]);
       setFolders(foldersRes.data);
       setFiles(filesRes.data);
-    } catch (error) {
+    } catch {
       toast.error('Failed to load Knowledge Tower');
     }
   };
 
+  // ── CRUD ──────────────────────────────────────────────────────────────────
+
   const createFolder = async () => {
     if (!newItemName.trim()) return;
     try {
-      const response = await axios.post(
+      const res = await axios.post(
         `${API}/tower/folders`,
         { name: newItemName, parent_id: newItemParent, color: 'zinc', order: folders.length },
         getAuthHeader()
       );
-      setFolders([...folders, response.data]);
-      setNewItemName('');
-      setNewItemParent(null);
+      setFolders(prev => [...prev, res.data]);
+      if (newItemParent) expandFolder(newItemParent);
+      resetNewItem();
       setShowNewFolderDialog(false);
       toast.success('Folder created');
-    } catch (error) {
+    } catch {
       toast.error('Failed to create folder');
     }
   };
@@ -112,84 +155,153 @@ export default function KnowledgeTower({ user }) {
   const createFile = async () => {
     if (!newItemName.trim()) return;
     try {
-      const response = await axios.post(
+      const res = await axios.post(
         `${API}/tower/files`,
         { name: newItemName, folder_id: newItemParent, content: '', color: 'zinc', bg_color: '#FFFFFF', order: files.length },
         getAuthHeader()
       );
-      setFiles([...files, response.data]);
-      setNewItemName('');
-      setNewItemParent(null);
+      setFiles(prev => [...prev, res.data]);
+      if (newItemParent) expandFolder(newItemParent);
+      resetNewItem();
       setShowNewFileDialog(false);
       toast.success('File created');
-    } catch (error) {
+      openFile(res.data.id);
+    } catch {
       toast.error('Failed to create file');
+    }
+  };
+
+  const renameItem = async () => {
+    if (!newItemName.trim() || !contextMenuTarget) return;
+    const { type, item } = contextMenuTarget;
+    try {
+      if (type === 'folder') {
+        const res = await axios.patch(`${API}/tower/folders/${item.id}`, { name: newItemName }, getAuthHeader());
+        setFolders(prev => prev.map(f => f.id === item.id ? res.data : f));
+      } else {
+        const res = await axios.patch(`${API}/tower/files/${item.id}`, { name: newItemName }, getAuthHeader());
+        setFiles(prev => prev.map(f => f.id === item.id ? res.data : f));
+        if (selectedFile?.id === item.id) setSelectedFile(s => ({ ...s, name: newItemName }));
+      }
+      setNewItemName('');
+      setShowRenameDialog(false);
+      toast.success('Renamed');
+    } catch {
+      toast.error('Failed to rename');
+    }
+  };
+
+  const changeItemColor = async (colorName) => {
+    if (!contextMenuTarget) return;
+    const { type, item } = contextMenuTarget;
+    try {
+      if (type === 'folder') {
+        const res = await axios.patch(`${API}/tower/folders/${item.id}`, { color: colorName }, getAuthHeader());
+        setFolders(prev => prev.map(f => f.id === item.id ? res.data : f));
+      } else {
+        const res = await axios.patch(`${API}/tower/files/${item.id}`, { color: colorName }, getAuthHeader());
+        setFiles(prev => prev.map(f => f.id === item.id ? res.data : f));
+        if (selectedFile?.id === item.id) setSelectedFile(s => ({ ...s, color: colorName }));
+      }
+      setShowColorPickerDialog(false);
+      toast.success('Color updated');
+    } catch {
+      toast.error('Failed to update color');
+    }
+  };
+
+  const duplicateFile = async (file) => {
+    try {
+      const full = await axios.get(`${API}/tower/files/${file.id}`, getAuthHeader());
+      const res = await axios.post(
+        `${API}/tower/files`,
+        { name: `${file.name} (copy)`, folder_id: file.folder_id, content: full.data.content, color: file.color, bg_color: file.bg_color, order: files.length },
+        getAuthHeader()
+      );
+      setFiles(prev => [...prev, res.data]);
+      toast.success('File duplicated');
+    } catch {
+      toast.error('Failed to duplicate file');
+    }
+  };
+
+  const moveFile = async (folderId) => {
+    if (!contextMenuTarget) return;
+    const { item } = contextMenuTarget;
+    try {
+      const res = await axios.patch(`${API}/tower/files/${item.id}`, { folder_id: folderId ?? null }, getAuthHeader());
+      setFiles(prev => prev.map(f => f.id === item.id ? res.data : f));
+      if (folderId) expandFolder(folderId);
+      setShowMoveDialog(false);
+      toast.success('File moved');
+    } catch {
+      toast.error('Failed to move file');
     }
   };
 
   const openFile = async (fileId) => {
     try {
-      const response = await axios.get(`${API}/tower/files/${fileId}`, getAuthHeader());
-      setSelectedFile(response.data);
-      setEditingContent(response.data.content);
-    } catch (error) {
+      const res = await axios.get(`${API}/tower/files/${fileId}`, getAuthHeader());
+      setSelectedFile(res.data);
+      setEditingContent(res.data.content);
+      setMobileTreeOpen(false);
+    } catch {
       toast.error('Failed to open file');
     }
   };
 
-  const saveFile = async () => {
+  const saveFile = useCallback(async (content) => {
     if (!selectedFile) return;
     setSaving(true);
     try {
-      await axios.patch(
-        `${API}/tower/files/${selectedFile.id}`,
-        { content: editingContent },
-        getAuthHeader()
-      );
-      setSelectedFile({ ...selectedFile, content: editingContent });
-      toast.success('Saved');
-    } catch (error) {
-      toast.error('Failed to save');
-    } finally {
+      await axios.patch(`${API}/tower/files/${selectedFile.id}`, { content }, getAuthHeader());
       setSaving(false);
+      setSavedIndicator(true);
+      setTimeout(() => setSavedIndicator(false), SAVED_INDICATOR_DURATION_MS);
+    } catch {
+      setSaving(false);
+      toast.error('Failed to save');
     }
-  };
+  }, [selectedFile]);
 
   const handleContentChange = () => {
     const content = contentEditableRef.current?.innerHTML || '';
     setEditingContent(content);
-    
-    // Auto-save after 2 seconds
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-    saveTimeoutRef.current = setTimeout(() => {
-      saveFile();
-    }, 2000);
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => saveFile(content), AUTO_SAVE_DELAY_MS);
   };
 
   const deleteFile = async (fileId) => {
     if (!window.confirm('Delete this file?')) return;
     try {
       await axios.delete(`${API}/tower/files/${fileId}`, getAuthHeader());
-      setFiles(files.filter(f => f.id !== fileId));
-      if (selectedFile?.id === fileId) {
-        setSelectedFile(null);
-      }
+      setFiles(prev => prev.filter(f => f.id !== fileId));
+      if (selectedFile?.id === fileId) setSelectedFile(null);
       toast.success('File deleted');
-    } catch (error) {
+    } catch {
       toast.error('Failed to delete file');
     }
   };
+
+  const getAllSubfolderIds = useCallback((folderId) => {
+    const subs = folders.filter(f => f.parent_id === folderId).map(f => f.id);
+    return [...subs, ...subs.flatMap(id => getAllSubfolderIds(id))];
+  }, [folders]);
 
   const deleteFolder = async (folderId) => {
     if (!window.confirm('Delete this folder and all its contents?')) return;
     try {
       await axios.delete(`${API}/tower/folders/${folderId}`, getAuthHeader());
-      setFolders(folders.filter(f => f.id !== folderId));
-      setFiles(files.filter(f => f.folder_id !== folderId));
+      const subIds = getAllSubfolderIds(folderId);
+      const allIds = [folderId, ...subIds];
+      setFolders(prev => prev.filter(f => !allIds.includes(f.id)));
+      setFiles(prev => {
+        const removed = prev.filter(f => allIds.includes(f.folder_id));
+        if (selectedFile && removed.some(f => f.id === selectedFile.id)) setSelectedFile(null);
+        return prev.filter(f => !allIds.includes(f.folder_id));
+      });
       toast.success('Folder deleted');
-    } catch (error) {
+    } catch {
       toast.error('Failed to delete folder');
     }
   };
@@ -199,62 +311,114 @@ export default function KnowledgeTower({ user }) {
     setSearching(true);
     setShowSaghboopResponse(true);
     try {
-      const response = await axios.get(`${API}/tower/search?q=${encodeURIComponent(searchQuery)}`, getAuthHeader());
-      setSearchResults(response.data);
-    } catch (error) {
+      const res = await axios.get(`${API}/tower/search?q=${encodeURIComponent(searchQuery)}`, getAuthHeader());
+      setSearchResults(res.data);
+    } catch {
       toast.error('Search failed');
     } finally {
       setSearching(false);
     }
   };
 
-  const toggleFolder = (folderId) => {
-    const newExpanded = new Set(expandedFolders);
-    if (newExpanded.has(folderId)) {
-      newExpanded.delete(folderId);
-    } else {
-      newExpanded.add(folderId);
+  const seedData = async () => {
+    try {
+      const res = await axios.post(`${API}/tower/seed`, {}, getAuthHeader());
+      if (res.data.seeded) {
+        toast.success('Sample data loaded!');
+        loadData();
+      } else {
+        toast.info('Tower already has sample data');
+      }
+    } catch {
+      toast.error('Failed to seed data');
     }
-    setExpandedFolders(newExpanded);
   };
 
-  const getColorClass = (colorName) => {
-    const color = COLORS.find(c => c.name === colorName);
-    return color ? color.class : 'text-zinc-500';
+  // ── Helpers ───────────────────────────────────────────────────────────────
+
+  const expandFolder = (id) => setExpandedFolders(prev => new Set([...prev, id]));
+
+  const toggleFolder = (id) => setExpandedFolders(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
+
+  const resetNewItem = () => { setNewItemName(''); setNewItemParent(null); };
+
+  const openContextMenu = (e, type, item) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenuTarget({ type, item });
+    setContextMenuPos({ x: e.clientX, y: e.clientY });
+    setShowContextMenu(true);
   };
+
+  // ── Drag & Drop ──────────────────────────────────────────────────────────
+
+  const handleDragStart = (e, file) => {
+    setDragging(file);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e, folderId) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOver(folderId);
+  };
+
+  const handleDrop = async (e, folderId) => {
+    e.preventDefault();
+    setDragOver(undefined);
+    if (!dragging || dragging.folder_id === folderId) { setDragging(null); return; }
+    try {
+      const res = await axios.patch(`${API}/tower/files/${dragging.id}`, { folder_id: folderId ?? null }, getAuthHeader());
+      setFiles(prev => prev.map(f => f.id === dragging.id ? res.data : f));
+      if (folderId) expandFolder(folderId);
+      toast.success('File moved');
+    } catch {
+      toast.error('Failed to move file');
+    }
+    setDragging(null);
+  };
+
+  // ── Tree renderer ─────────────────────────────────────────────────────────
 
   const renderTree = (parentId = null, level = 0) => {
     const childFolders = folders.filter(f => f.parent_id === parentId);
     const childFiles = files.filter(f => f.folder_id === parentId);
+    if (childFolders.length === 0 && childFiles.length === 0) return null;
 
     return (
       <>
         {childFolders.map(folder => (
-          <div key={folder.id} style={{ marginLeft: `${level * 20}px` }}>
+          <div
+            key={folder.id}
+            onDragOver={(e) => handleDragOver(e, folder.id)}
+            onDrop={(e) => handleDrop(e, folder.id)}
+          >
             <div
               data-testid={`folder-${folder.id}`}
-              className="flex items-center gap-2 h-8 px-2 rounded-lg hover:bg-zinc-50 cursor-pointer group"
+              style={{ paddingLeft: `${level * 20 + 8}px` }}
+              className={`flex items-center gap-1.5 h-8 pr-2 rounded-lg hover:bg-zinc-100 cursor-pointer group transition-colors ${
+                dragOver === folder.id ? 'bg-blue-50 ring-1 ring-blue-300' : ''
+              }`}
               onClick={() => toggleFolder(folder.id)}
+              onContextMenu={(e) => openContextMenu(e, 'folder', folder)}
             >
-              {expandedFolders.has(folder.id) ? (
-                <ChevronDown className="w-4 h-4 text-zinc-400" />
-              ) : (
-                <ChevronRight className="w-4 h-4 text-zinc-400" />
-              )}
-              {expandedFolders.has(folder.id) ? (
-                <FolderOpen className={`w-4 h-4 ${getColorClass(folder.color)}`} />
-              ) : (
-                <Folder className={`w-4 h-4 ${getColorClass(folder.color)}`} />
-              )}
+              {expandedFolders.has(folder.id)
+                ? <ChevronDown className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
+                : <ChevronRight className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />}
+              {expandedFolders.has(folder.id)
+                ? <FolderOpen className={`w-4 h-4 flex-shrink-0 ${getColorClass(folder.color)}`} />
+                : <Folder className={`w-4 h-4 flex-shrink-0 ${getColorClass(folder.color)}`} />}
               <span className="flex-1 font-plex text-sm font-medium text-zinc-900 truncate">{folder.name}</span>
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setContextMenu({ type: 'folder', item: folder });
-                }}
-                className="opacity-0 group-hover:opacity-100 p-1 hover:bg-zinc-100 rounded"
+                onClick={(e) => openContextMenu(e, 'folder', folder)}
+                className="opacity-0 group-hover:opacity-100 p-1 hover:bg-zinc-200 rounded flex-shrink-0 transition-opacity"
+                aria-label="Folder options"
               >
-                <MoreVertical className="w-4 h-4 text-zinc-400" />
+                <MoreVertical className="w-3.5 h-3.5 text-zinc-500" />
               </button>
             </div>
             {expandedFolders.has(folder.id) && renderTree(folder.id, level + 1)}
@@ -264,22 +428,27 @@ export default function KnowledgeTower({ user }) {
           <div
             key={file.id}
             data-testid={`file-${file.id}`}
-            style={{ marginLeft: `${level * 20 + 20}px` }}
-            className={`flex items-center gap-2 h-8 px-2 rounded-lg hover:bg-zinc-50 cursor-pointer group ${
+            style={{ paddingLeft: `${level * 20 + 28}px` }}
+            draggable
+            onDragStart={(e) => handleDragStart(e, file)}
+            onDragEnd={() => setDragging(null)}
+            className={`flex items-center gap-1.5 h-8 pr-2 rounded-lg hover:bg-zinc-100 cursor-pointer group transition-colors ${
               selectedFile?.id === file.id ? 'bg-zinc-100' : ''
-            }`}
+            } ${dragging?.id === file.id ? 'opacity-50' : ''}`}
             onClick={() => openFile(file.id)}
+            onContextMenu={(e) => openContextMenu(e, 'file', file)}
           >
-            <FileText className={`w-4 h-4 ${getColorClass(file.color)}`} />
+            <FileText className={`w-4 h-4 flex-shrink-0 ${getColorClass(file.color)}`} />
             <span className="flex-1 font-plex text-sm text-zinc-900 truncate">{file.name}</span>
+            {file.color && file.color !== 'zinc' && (
+              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${getDotClass(file.color)}`} />
+            )}
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setContextMenu({ type: 'file', item: file });
-              }}
-              className="opacity-0 group-hover:opacity-100 p-1 hover:bg-zinc-100 rounded"
+              onClick={(e) => openContextMenu(e, 'file', file)}
+              className="opacity-0 group-hover:opacity-100 p-1 hover:bg-zinc-200 rounded flex-shrink-0 transition-opacity"
+              aria-label="File options"
             >
-              <MoreVertical className="w-4 h-4 text-zinc-400" />
+              <MoreVertical className="w-3.5 h-3.5 text-zinc-500" />
             </button>
           </div>
         ))}
@@ -287,222 +456,317 @@ export default function KnowledgeTower({ user }) {
     );
   };
 
+  // ── Tree Panel (shared for desktop + mobile drawer) ───────────────────────
+
+  const TreePanel = () => (
+    <div className="h-full flex flex-col bg-zinc-50">
+      <div className="p-4 border-b border-zinc-200">
+        <div className="flex items-center gap-2 mb-3">
+          <Library className="w-5 h-5 text-zinc-900" />
+          <h2 className="font-outfit text-base font-semibold text-zinc-900">Knowledge Tower</h2>
+        </div>
+        <div className="flex gap-1.5">
+          <Button
+            data-testid="new-folder-button"
+            onClick={() => { resetNewItem(); setShowNewFolderDialog(true); }}
+            variant="outline"
+            size="sm"
+            className="flex-1 rounded-full text-xs h-7"
+          >
+            <Plus className="w-3 h-3 mr-1" />Folder
+          </Button>
+          <Button
+            data-testid="new-file-button"
+            onClick={() => { resetNewItem(); setShowNewFileDialog(true); }}
+            variant="outline"
+            size="sm"
+            className="flex-1 rounded-full text-xs h-7"
+          >
+            <Plus className="w-3 h-3 mr-1" />File
+          </Button>
+        </div>
+      </div>
+      <div
+        className="flex-1 overflow-y-auto p-2"
+        onDragOver={(e) => handleDragOver(e, null)}
+        onDrop={(e) => handleDrop(e, null)}
+      >
+        {folders.length === 0 && files.length === 0 ? (
+          <div className="text-center py-10">
+            <Library className="w-8 h-8 text-zinc-300 mx-auto mb-2" />
+            <p className="font-plex text-xs text-zinc-400 mb-4">Tower is empty</p>
+            <button
+              onClick={seedData}
+              className="font-plex text-xs text-blue-500 hover:text-blue-700 underline"
+            >
+              Load sample data
+            </button>
+          </div>
+        ) : (
+          renderTree()
+        )}
+      </div>
+    </div>
+  );
+
   const isDarkMode = selectedFile?.bg_color === '#18181B';
 
+  // ── Render ────────────────────────────────────────────────────────────────
+
   return (
-    <div data-testid="knowledge-tower" className="flex flex-row-reverse h-[calc(100vh-4rem)] overflow-hidden">
-      {/* File Tree Panel - NOW ON RIGHT */}
-      <AnimatePresence>
+    <div
+      data-testid="knowledge-tower"
+      className="flex h-[calc(100vh-4rem)] overflow-hidden -m-4 sm:-m-6 lg:-m-8"
+    >
+      {/* Desktop tree panel */}
+      <AnimatePresence initial={false}>
         {treeVisible && (
           <motion.div
-            initial={{ x: 300 }}
-            animate={{ x: 0 }}
-            exit={{ x: 300 }}
-            className={`w-[300px] border-l border-zinc-200 bg-zinc-50 flex flex-col transition-all duration-300 ${
-              viewMode === 'tree' ? 'z-10 opacity-100' : 'z-0 opacity-30 pointer-events-none'
-            }`}
+            key="tree"
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 280, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="hidden lg:block border-r border-zinc-200 overflow-hidden flex-shrink-0"
           >
-            <div className="p-4 border-b border-zinc-200">
-              <div className="flex items-center gap-2 mb-4">
-                <Library className="w-5 h-5 text-zinc-900" />
-                <h2 className="font-outfit text-lg font-medium text-zinc-900">Knowledge Tower</h2>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  data-testid="new-folder-button"
-                  onClick={() => setShowNewFolderDialog(true)}
-                  variant="outline"
-                  className="flex-1 rounded-full text-xs"
-                >
-                  <Plus className="w-3 h-3 mr-1" />
-                  Folder
-                </Button>
-                <Button
-                  data-testid="new-file-button"
-                  onClick={() => setShowNewFileDialog(true)}
-                  variant="outline"
-                  className="flex-1 rounded-full text-xs"
-                >
-                  <Plus className="w-3 h-3 mr-1" />
-                  File
-                </Button>
-              </div>
-            </div>
-            <div className="flex-1 overflow-y-auto p-2">
-              {renderTree()}
+            <div style={{ width: 280 }}>
+              <TreePanel />
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Sahbopa Content Area - NOW ON LEFT */}
-      <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${
-        viewMode === 'shb' ? 'z-10 opacity-100' : 'z-0 opacity-30 pointer-events-none'
-      }`}>
-        {/* Header with Toggle */}
-        <div className="p-4 border-b border-zinc-200 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button
-              data-testid="toggle-tree-button"
-              onClick={() => setTreeVisible(!treeVisible)}
-              className="p-2 hover:bg-zinc-100 rounded-lg"
+      {/* Mobile drawer overlay */}
+      <AnimatePresence>
+        {mobileTreeOpen && (
+          <>
+            <motion.div
+              key="overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 z-40 lg:hidden"
+              onClick={() => setMobileTreeOpen(false)}
+            />
+            <motion.div
+              key="drawer"
+              initial={{ x: -300 }}
+              animate={{ x: 0 }}
+              exit={{ x: -300 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 220 }}
+              className="fixed left-0 top-0 bottom-0 w-[300px] z-50 shadow-xl lg:hidden"
             >
-              <Menu className="w-5 h-5 text-zinc-600" />
-            </button>
-            
-            {/* Shb vs Tree Toggle */}
-            <div className="flex gap-1 bg-zinc-100 rounded-full p-1">
-              <button
-                data-testid="shb-mode-button"
-                onClick={() => setViewMode('shb')}
-                className={`px-4 py-2 rounded-full font-plex text-sm font-medium transition-all ${
-                  viewMode === 'shb'
-                    ? 'bg-zinc-900 text-white'
-                    : 'text-zinc-600 hover:text-zinc-900'
-                }`}
-              >
-                🤖 Sahbopa
-              </button>
-              <button
-                data-testid="tree-mode-button"
-                onClick={() => setViewMode('tree')}
-                className={`px-4 py-2 rounded-full font-plex text-sm font-medium transition-all ${
-                  viewMode === 'tree'
-                    ? 'bg-zinc-900 text-white'
-                    : 'text-zinc-600 hover:text-zinc-900'
-                }`}
-              >
-                📚 Tree
-              </button>
+              <TreePanel />
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Content panel */}
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        {/* Top bar */}
+        <div className="px-4 py-3 border-b border-zinc-200 bg-white flex items-center gap-3 flex-shrink-0">
+          {/* Mobile toggle */}
+          <button
+            data-testid="mobile-tree-toggle"
+            onClick={() => setMobileTreeOpen(true)}
+            className="lg:hidden p-2 hover:bg-zinc-100 rounded-lg"
+            aria-label="Open file tree"
+          >
+            <Menu className="w-5 h-5 text-zinc-600" />
+          </button>
+          {/* Desktop toggle */}
+          <button
+            data-testid="toggle-tree-button"
+            onClick={() => setTreeVisible(v => !v)}
+            className="hidden lg:flex p-2 hover:bg-zinc-100 rounded-lg"
+            aria-label="Toggle file tree"
+          >
+            <Menu className="w-5 h-5 text-zinc-600" />
+          </button>
+
+          {selectedFile ? (
+            <div className="flex-1 flex items-center justify-between min-w-0 gap-2">
+              <div className="min-w-0">
+                <h2 className="font-outfit text-lg font-medium text-zinc-900 truncate leading-tight">
+                  {selectedFile.name}
+                </h2>
+                <div className="flex items-center gap-3 text-xs text-zinc-400 mt-0.5">
+                  <span>Created {new Date(selectedFile.created_at).toLocaleDateString()}</span>
+                  <span>Modified {new Date(selectedFile.updated_at).toLocaleDateString()}</span>
+                  {saving && <span className="text-zinc-500 animate-pulse">Saving…</span>}
+                  {savedIndicator && !saving && <span className="text-emerald-500">✓ Saved</span>}
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                <Button
+                  onClick={() => setShowBgColorDialog(true)}
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full"
+                  data-testid="bg-color-button"
+                  title="Change background"
+                >
+                  <Palette className="w-4 h-4" />
+                </Button>
+                <Button
+                  onClick={() => deleteFile(selectedFile.id)}
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full text-red-600 hover:bg-red-50 hover:border-red-200"
+                  data-testid="delete-file-button"
+                  title="Delete file"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+                <Button
+                  onClick={() => setSelectedFile(null)}
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full"
+                  data-testid="close-file-button"
+                  title="Close file"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="flex items-center gap-2 flex-1">
+              <Library className="w-4 h-4 text-zinc-400" />
+              <span className="font-plex text-sm text-zinc-500">Knowledge Tower</span>
+            </div>
+          )}
         </div>
 
-        {/* Content Area */}
-        <div className="flex-1 overflow-y-auto pb-32">
+        {/* Scrollable content area */}
+        <div className="flex-1 overflow-y-auto">
           {!selectedFile ? (
-            <div className="flex flex-col items-center justify-center h-full p-8">
-              <div className="text-6xl mb-4">📚</div>
+            /* Welcome / Saghboop greeting */
+            <div className="flex flex-col items-center justify-center min-h-full p-8 text-center">
+              <div className="text-6xl mb-4 select-none">📚</div>
               <h3 className="font-outfit text-2xl font-medium text-zinc-900 mb-2">مرحبا! أنا صغبوب</h3>
-              <p className="font-plex text-base text-zinc-600 mb-8">Ask me anything about what's in the Knowledge Tower</p>
-              {files.length > 0 && (
-                <div className="w-full max-w-2xl">
+              <p className="font-plex text-base text-zinc-500 mb-8 max-w-md">
+                Ask me anything about what's in the Knowledge Tower
+              </p>
+              {files.length > 0 ? (
+                <div className="w-full max-w-lg text-left">
                   <h4 className="font-plex text-sm font-semibold text-zinc-900 mb-3">Recent Files</h4>
                   <div className="grid gap-2">
-                    {files.slice(0, 5).map(file => (
-                      <div
-                        key={file.id}
-                        onClick={() => openFile(file.id)}
-                        className="p-4 border border-zinc-200 rounded-xl hover:bg-zinc-50 cursor-pointer"
-                      >
-                        <div className="flex items-center gap-2">
-                          <FileText className={`w-4 h-4 ${getColorClass(file.color)}`} />
-                          <span className="font-plex text-sm font-medium text-zinc-900">{file.name}</span>
+                    {[...files]
+                      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+                      .slice(0, 5)
+                      .map(file => (
+                        <div
+                          key={file.id}
+                          onClick={() => openFile(file.id)}
+                          className="p-3 border border-zinc-200 rounded-xl hover:bg-zinc-50 cursor-pointer transition-colors flex items-center gap-2"
+                        >
+                          <FileText className={`w-4 h-4 flex-shrink-0 ${getColorClass(file.color)}`} />
+                          <span className="font-plex text-sm font-medium text-zinc-900 flex-1 truncate">{file.name}</span>
+                          <span className="font-plex text-xs text-zinc-400 flex-shrink-0">
+                            {new Date(file.updated_at).toLocaleDateString()}
+                          </span>
                         </div>
-                      </div>
-                    ))}
+                      ))}
                   </div>
                 </div>
+              ) : (
+                <button
+                  onClick={seedData}
+                  className="font-plex text-sm text-blue-500 hover:text-blue-700 underline"
+                >
+                  Load sample data to get started
+                </button>
               )}
             </div>
           ) : (
-            <div className="max-w-4xl mx-auto p-8">
-              {/* File Header */}
-              <div className="mb-6 pb-4 border-b border-zinc-200 flex items-center justify-between">
-                <div className="flex-1">
-                  <h2 className="font-outfit text-2xl font-medium text-zinc-900 mb-2">{selectedFile.name}</h2>
-                  <div className="flex items-center gap-4 text-xs text-zinc-500">
-                    <span>Created {new Date(selectedFile.created_at).toLocaleDateString()}</span>
-                    <span>Modified {new Date(selectedFile.updated_at).toLocaleDateString()}</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {saving && <span className="text-xs text-zinc-500">Saving...</span>}
-                  <Button
-                    onClick={() => setShowBgColorPicker(true)}
-                    variant="outline"
-                    className="rounded-full"
-                    data-testid="bg-color-button"
-                  >
-                    <Palette className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    onClick={() => deleteFile(selectedFile.id)}
-                    variant="outline"
-                    className="rounded-full text-red-600 hover:bg-red-50"
-                    data-testid="delete-file-button"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    onClick={() => setSelectedFile(null)}
-                    variant="outline"
-                    className="rounded-full"
-                    data-testid="close-file-button"
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-
-              {/* Content Editor */}
+            /* File editor */
+            <div className="h-full p-4 sm:p-6 lg:p-8">
               <div
                 ref={contentEditableRef}
                 contentEditable
+                suppressContentEditableWarning
                 onInput={handleContentChange}
                 dangerouslySetInnerHTML={{ __html: editingContent }}
-                style={{ backgroundColor: selectedFile.bg_color, color: isDarkMode ? '#fff' : '#000' }}
-                className="min-h-[500px] p-6 rounded-xl border border-zinc-200 focus:outline-none focus:ring-2 focus:ring-zinc-900 font-plex text-base leading-relaxed"
-                placeholder="Paste or type your content here..."
+                data-placeholder="Paste or type your content here…"
+                style={{
+                  backgroundColor: selectedFile.bg_color,
+                  color: isDarkMode ? '#f4f4f5' : '#18181B',
+                  /* Header (~4rem) + top bar (~4rem) + chat bar (~5rem) + padding (~5rem) */
+                  minHeight: 'calc(100vh - 18rem)',
+                }}
+                className="tower-editor w-full p-6 rounded-xl border border-zinc-200 focus:outline-none focus:ring-2 focus:ring-zinc-900 font-plex text-base leading-relaxed whitespace-pre-wrap"
               />
             </div>
           )}
         </div>
 
-        {/* Saghboop Chat Input */}
-        <div className="fixed bottom-0 left-0 right-0 lg:left-64 p-4 bg-white/80 backdrop-blur-sm border-t border-zinc-200">
-          {showSaghboopResponse && searchResults.length > 0 && (
-            <motion.div
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              className="mb-4 p-6 bg-white rounded-2xl border border-zinc-200 shadow-lg max-w-4xl mx-auto"
-            >
-              <div className="flex items-start gap-3 mb-4">
-                <div className="text-2xl">📚</div>
-                <div className="flex-1">
-                  <h4 className="font-outfit text-lg font-medium text-zinc-900 mb-2">Saghboop Found {searchResults.length} Results</h4>
-                  <div className="space-y-3">
-                    {searchResults.map(result => (
-                      <div
-                        key={result.file_id}
-                        onClick={() => openFile(result.file_id)}
-                        className="p-3 bg-zinc-50 rounded-lg hover:bg-zinc-100 cursor-pointer"
-                      >
-                        <div className="flex items-center gap-2 mb-1">
-                          <FileText className={`w-4 h-4 ${getColorClass(result.color)}`} />
-                          <span className="font-plex text-sm font-medium text-zinc-900">{result.file_name}</span>
+        {/* Saghboop sticky chat bar */}
+        <div className="flex-shrink-0 border-t border-zinc-200 bg-white/90 backdrop-blur-sm p-4">
+          <AnimatePresence>
+            {showSaghboopResponse && (
+              <motion.div
+                key="response"
+                initial={{ y: 12, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 12, opacity: 0 }}
+                className="mb-3 p-4 bg-white rounded-2xl border border-zinc-200 shadow-lg"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="text-2xl flex-shrink-0 select-none">📚</div>
+                  <div className="flex-1 min-w-0">
+                    {searching ? (
+                      <p className="font-plex text-sm text-zinc-500 animate-pulse">
+                        Saghboop is searching the tower…
+                      </p>
+                    ) : searchResults.length > 0 ? (
+                      <>
+                        <p className="font-plex text-sm font-medium text-zinc-900 mb-2">
+                          Found {searchResults.length} result{searchResults.length !== 1 ? 's' : ''} for "{searchQuery}"
+                        </p>
+                        <div className="space-y-2">
+                          {searchResults.map(result => (
+                            <div
+                              key={result.file_id}
+                              onClick={() => { openFile(result.file_id); setShowSaghboopResponse(false); }}
+                              className="p-2 bg-zinc-50 rounded-lg hover:bg-zinc-100 cursor-pointer transition-colors"
+                            >
+                              <div className="flex items-center gap-2 mb-0.5">
+                                <FileText className={`w-3.5 h-3.5 flex-shrink-0 ${getColorClass(result.color)}`} />
+                                <span className="font-plex text-sm font-medium text-zinc-900 truncate">{result.file_name}</span>
+                              </div>
+                              {result.snippet && (
+                                <p className="font-plex text-xs text-zinc-500 pl-5 truncate">{result.snippet}</p>
+                              )}
+                            </div>
+                          ))}
                         </div>
-                        <p className="font-plex text-xs text-zinc-600">{result.snippet}</p>
-                      </div>
-                    ))}
+                      </>
+                    ) : (
+                      <p className="font-plex text-sm text-zinc-500">
+                        No results found for "{searchQuery}"
+                      </p>
+                    )}
                   </div>
+                  <button
+                    onClick={() => setShowSaghboopResponse(false)}
+                    className="p-1 hover:bg-zinc-100 rounded flex-shrink-0"
+                    aria-label="Dismiss"
+                  >
+                    <X className="w-4 h-4 text-zinc-400" />
+                  </button>
                 </div>
-                <button
-                  onClick={() => setShowSaghboopResponse(false)}
-                  className="p-1 hover:bg-zinc-100 rounded"
-                >
-                  <X className="w-4 h-4 text-zinc-400" />
-                </button>
-              </div>
-            </motion.div>
-          )}
-          <div className="flex gap-2 max-w-4xl mx-auto">
+              </motion.div>
+            )}
+          </AnimatePresence>
+          <div className="flex gap-2">
             <Input
               data-testid="saghboop-input"
-              placeholder="Ask Saghboop about anything in the tower..."
+              placeholder="Ask Saghboop about anything in the tower…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && searchTower()}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); searchTower(); } }}
               className="flex-1 rounded-full border-zinc-200"
             />
             <Button
@@ -510,51 +774,158 @@ export default function KnowledgeTower({ user }) {
               onClick={searchTower}
               disabled={searching}
               className="rounded-full bg-zinc-900 text-white hover:bg-zinc-800"
+              aria-label="Search"
             >
-              {searching ? <Search className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              {searching
+                ? <Search className="w-4 h-4 animate-spin" />
+                : <Send className="w-4 h-4" />}
             </Button>
           </div>
         </div>
       </div>
 
-      {/* Dialogs */}
+      {/* ── Context Menu ── */}
+      <AnimatePresence>
+        {showContextMenu && contextMenuTarget && (
+          <motion.div
+            key="ctx"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.08 }}
+            style={{ top: contextMenuPos.y, left: contextMenuPos.x, position: 'fixed', zIndex: 200 }}
+            className="bg-white rounded-xl shadow-xl border border-zinc-200 p-1 min-w-[190px]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {contextMenuTarget.type === 'folder' ? (
+              <>
+                <CtxBtn icon={<Edit2 className="w-3.5 h-3.5" />} label="Rename" onClick={() => {
+                  setNewItemName(contextMenuTarget.item.name);
+                  setShowRenameDialog(true);
+                  setShowContextMenu(false);
+                }} />
+                <CtxBtn icon={<Palette className="w-3.5 h-3.5" />} label="Change Color" onClick={() => {
+                  setShowColorPickerDialog(true);
+                  setShowContextMenu(false);
+                }} />
+                <CtxBtn icon={<FilePlus className="w-3.5 h-3.5" />} label="New File Inside" onClick={() => {
+                  setNewItemParent(contextMenuTarget.item.id);
+                  setNewItemName('');
+                  setShowNewFileDialog(true);
+                  setShowContextMenu(false);
+                }} />
+                <CtxBtn icon={<FolderPlus className="w-3.5 h-3.5" />} label="New Sub-folder" onClick={() => {
+                  setNewItemParent(contextMenuTarget.item.id);
+                  setNewItemName('');
+                  setShowNewFolderDialog(true);
+                  setShowContextMenu(false);
+                }} />
+                <div className="my-1 h-px bg-zinc-100" />
+                <CtxBtn icon={<Trash2 className="w-3.5 h-3.5" />} label="Delete Folder" danger onClick={() => {
+                  deleteFolder(contextMenuTarget.item.id);
+                  setShowContextMenu(false);
+                }} />
+              </>
+            ) : (
+              <>
+                <CtxBtn icon={<Edit2 className="w-3.5 h-3.5" />} label="Rename" onClick={() => {
+                  setNewItemName(contextMenuTarget.item.name);
+                  setShowRenameDialog(true);
+                  setShowContextMenu(false);
+                }} />
+                <CtxBtn icon={<Palette className="w-3.5 h-3.5" />} label="Change Color" onClick={() => {
+                  setShowColorPickerDialog(true);
+                  setShowContextMenu(false);
+                }} />
+                <CtxBtn icon={<Copy className="w-3.5 h-3.5" />} label="Duplicate" onClick={() => {
+                  duplicateFile(contextMenuTarget.item);
+                  setShowContextMenu(false);
+                }} />
+                <CtxBtn icon={<MoveRight className="w-3.5 h-3.5" />} label="Move to Folder" onClick={() => {
+                  setShowMoveDialog(true);
+                  setShowContextMenu(false);
+                }} />
+                <div className="my-1 h-px bg-zinc-100" />
+                <CtxBtn icon={<Trash2 className="w-3.5 h-3.5" />} label="Delete File" danger onClick={() => {
+                  deleteFile(contextMenuTarget.item.id);
+                  setShowContextMenu(false);
+                }} />
+              </>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Dialogs ── */}
+
       <Dialog open={showNewFolderDialog} onOpenChange={setShowNewFolderDialog}>
         <DialogContent className="rounded-2xl">
-          <DialogHeader>
-            <DialogTitle>Create New Folder</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Create New Folder</DialogTitle></DialogHeader>
           <Input
+            autoFocus
             placeholder="Folder name"
             value={newItemName}
             onChange={(e) => setNewItemName(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && createFolder()}
+            onKeyDown={(e) => e.key === 'Enter' && createFolder()}
             className="rounded-xl"
           />
-          <Button onClick={createFolder} className="rounded-full bg-zinc-900 text-white">Create</Button>
+          <Button onClick={createFolder} className="rounded-full bg-zinc-900 text-white">Create Folder</Button>
         </DialogContent>
       </Dialog>
 
       <Dialog open={showNewFileDialog} onOpenChange={setShowNewFileDialog}>
         <DialogContent className="rounded-2xl">
-          <DialogHeader>
-            <DialogTitle>Create New File</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Create New File</DialogTitle></DialogHeader>
           <Input
+            autoFocus
             placeholder="File name"
             value={newItemName}
             onChange={(e) => setNewItemName(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && createFile()}
+            onKeyDown={(e) => e.key === 'Enter' && createFile()}
             className="rounded-xl"
           />
-          <Button onClick={createFile} className="rounded-full bg-zinc-900 text-white">Create</Button>
+          <Button onClick={createFile} className="rounded-full bg-zinc-900 text-white">Create File</Button>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showBgColorPicker} onOpenChange={setShowBgColorPicker}>
+      <Dialog open={showRenameDialog} onOpenChange={setShowRenameDialog}>
         <DialogContent className="rounded-2xl">
           <DialogHeader>
-            <DialogTitle>Background Color</DialogTitle>
+            <DialogTitle>Rename {contextMenuTarget?.type === 'folder' ? 'Folder' : 'File'}</DialogTitle>
           </DialogHeader>
+          <Input
+            autoFocus
+            placeholder="New name"
+            value={newItemName}
+            onChange={(e) => setNewItemName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && renameItem()}
+            className="rounded-xl"
+          />
+          <Button onClick={renameItem} className="rounded-full bg-zinc-900 text-white">Rename</Button>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showColorPickerDialog} onOpenChange={setShowColorPickerDialog}>
+        <DialogContent className="rounded-2xl">
+          <DialogHeader><DialogTitle>Choose Color</DialogTitle></DialogHeader>
+          <div className="grid grid-cols-4 gap-2">
+            {COLORS.map(color => (
+              <button
+                key={color.name}
+                onClick={() => changeItemColor(color.name)}
+                className="h-10 rounded-lg border-2 border-zinc-200 hover:border-zinc-900 flex items-center justify-center gap-1.5 transition-colors"
+              >
+                <span className={`w-4 h-4 rounded-full ${color.dot}`} />
+                <span className="font-plex text-xs capitalize text-zinc-700">{color.name}</span>
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showBgColorDialog} onOpenChange={setShowBgColorDialog}>
+        <DialogContent className="rounded-2xl">
+          <DialogHeader><DialogTitle>Background Color</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-2">
             {BG_COLORS.map(color => (
               <button
@@ -562,22 +933,66 @@ export default function KnowledgeTower({ user }) {
                 onClick={async () => {
                   try {
                     await axios.patch(`${API}/tower/files/${selectedFile.id}`, { bg_color: color.value }, getAuthHeader());
-                    setSelectedFile({ ...selectedFile, bg_color: color.value });
-                    setShowBgColorPicker(false);
+                    setSelectedFile(s => ({ ...s, bg_color: color.value }));
+                    setShowBgColorDialog(false);
                     toast.success('Background updated');
-                  } catch (error) {
-                    toast.error('Failed to update');
+                  } catch {
+                    toast.error('Failed to update background');
                   }
                 }}
                 style={{ backgroundColor: color.value }}
-                className="h-12 rounded-lg border-2 border-zinc-200 hover:border-zinc-900 flex items-center justify-center font-plex text-xs font-medium"
+                className="h-12 rounded-lg border-2 border-zinc-200 hover:border-zinc-900 flex items-center justify-center font-plex text-xs font-medium transition-colors"
               >
-                <span style={{ color: color.value === '#18181B' ? '#fff' : '#000' }}>{color.name}</span>
+                <span style={{ color: color.value === '#18181B' ? '#f4f4f5' : '#18181B' }}>
+                  {color.name}
+                </span>
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showMoveDialog} onOpenChange={setShowMoveDialog}>
+        <DialogContent className="rounded-2xl">
+          <DialogHeader><DialogTitle>Move to Folder</DialogTitle></DialogHeader>
+          <div className="space-y-1 max-h-60 overflow-y-auto">
+            <button
+              onClick={() => moveFile(null)}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-zinc-50 font-plex text-sm text-zinc-700 transition-colors"
+            >
+              <Library className="w-4 h-4 text-zinc-400" /> Root Level
+            </button>
+            {folders.map(folder => (
+              <button
+                key={folder.id}
+                onClick={() => moveFile(folder.id)}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-zinc-50 font-plex text-sm text-zinc-700 transition-colors"
+              >
+                <Folder className={`w-4 h-4 ${getColorClass(folder.color)}`} />
+                {folder.name}
               </button>
             ))}
           </div>
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+// ── Small helper component ────────────────────────────────────────────────────
+
+function CtxBtn({ icon, label, onClick, danger }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg font-plex text-sm transition-colors ${
+        danger
+          ? 'text-red-600 hover:bg-red-50'
+          : 'text-zinc-700 hover:bg-zinc-50'
+      }`}
+    >
+      {icon}
+      {label}
+    </button>
   );
 }
