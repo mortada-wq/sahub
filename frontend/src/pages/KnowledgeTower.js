@@ -61,6 +61,9 @@ const getColorClass = (colorName) =>
 const getDotClass = (colorName) =>
   (COLORS.find(c => c.name === colorName) || COLORS[0]).dot;
 
+const AUTO_SAVE_DELAY_MS = 2000;
+const SAVED_INDICATOR_DURATION_MS = 2000;
+
 export default function KnowledgeTower({ user }) {
   const [folders, setFolders] = useState([]);
   const [files, setFiles] = useState([]);
@@ -254,7 +257,7 @@ export default function KnowledgeTower({ user }) {
       await axios.patch(`${API}/tower/files/${selectedFile.id}`, { content }, getAuthHeader());
       setSaving(false);
       setSavedIndicator(true);
-      setTimeout(() => setSavedIndicator(false), 2000);
+      setTimeout(() => setSavedIndicator(false), SAVED_INDICATOR_DURATION_MS);
     } catch {
       setSaving(false);
       toast.error('Failed to save');
@@ -265,7 +268,7 @@ export default function KnowledgeTower({ user }) {
     const content = contentEditableRef.current?.innerHTML || '';
     setEditingContent(content);
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(() => saveFile(content), 2000);
+    saveTimeoutRef.current = setTimeout(() => saveFile(content), AUTO_SAVE_DELAY_MS);
   };
 
   const deleteFile = async (fileId) => {
@@ -651,7 +654,7 @@ export default function KnowledgeTower({ user }) {
                   <h4 className="font-plex text-sm font-semibold text-zinc-900 mb-3">Recent Files</h4>
                   <div className="grid gap-2">
                     {[...files]
-                      .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+                      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
                       .slice(0, 5)
                       .map(file => (
                         <div
@@ -690,6 +693,7 @@ export default function KnowledgeTower({ user }) {
                 style={{
                   backgroundColor: selectedFile.bg_color,
                   color: isDarkMode ? '#f4f4f5' : '#18181B',
+                  /* Header (~4rem) + top bar (~4rem) + chat bar (~5rem) + padding (~5rem) */
                   minHeight: 'calc(100vh - 18rem)',
                 }}
                 className="tower-editor w-full p-6 rounded-xl border border-zinc-200 focus:outline-none focus:ring-2 focus:ring-zinc-900 font-plex text-base leading-relaxed whitespace-pre-wrap"
@@ -762,7 +766,7 @@ export default function KnowledgeTower({ user }) {
               placeholder="Ask Saghboop about anything in the tower…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && searchTower()}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); searchTower(); } }}
               className="flex-1 rounded-full border-zinc-200"
             />
             <Button
