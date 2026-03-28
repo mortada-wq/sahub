@@ -132,7 +132,7 @@ export default function TasksPage({ user }) {
                   : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
               }`}
             >
-              {status === 'all' ? t.all : status === 'todo' ? t.todo : status === 'in_progress' ? t.inProgress : t.completedStatus}
+              {({ all: t.all, todo: t.todo, in_progress: t.inProgress, completed: t.completedStatus })[status]}
             </button>
           ))}
         </div>
@@ -308,7 +308,7 @@ export default function TasksPage({ user }) {
                           : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
                       }`}
                     >
-                      {status === 'todo' ? t.todo : status === 'in_progress' ? t.inProgress : t.completedStatus}
+                      {({ todo: t.todo, in_progress: t.inProgress, completed: t.completedStatus })[status]}
                     </button>
                   ))}
                 </div>

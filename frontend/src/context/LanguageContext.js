@@ -132,6 +132,7 @@ const translations = {
     towerSearchFailed: 'Search failed',
     towerBgUpdated: 'Background updated',
     towerBgUpdateFailed: 'Failed to update',
+    failedToLoadTasks: 'Failed to load tasks',
     taskCreated: 'Task created successfully!',
     failedToCreateTask: 'Failed to create task',
     taskUpdated: 'Task updated!',
@@ -204,7 +205,13 @@ const translations = {
     assignTask: 'عيِّن مهمة...',
     descriptionOptional: 'الوصف (اختياري)',
     create: 'إنشاء',
-    comments: (n) => `التعليقات (${n})`,
+    comments: (n) => {
+      if (n === 0) return 'لا توجد تعليقات';
+      if (n === 1) return 'تعليق واحد (1)';
+      if (n === 2) return 'تعليقان (2)';
+      if (n >= 3 && n <= 10) return `${n} تعليقات`;
+      return `${n} تعليق`;
+    },
     addComment: 'أضف تعليقاً...',
     assignedToLabel: 'مُعيَّن إلى:',
     due: 'الموعد النهائي:',
@@ -257,7 +264,12 @@ const translations = {
     towerSaving: 'جارٍ الحفظ...',
     towerSaghboopWelcome: 'مرحبا! أنا صغبوب',
     towerSaghboopSubtitle: 'اسألني عن أي شيء في برج المعرفة',
-    towerSaghboopFound: (n) => `وجد صغبوب ${n} نتيجة`,
+    towerSaghboopFound: (n) => {
+      if (n === 1) return 'وجد صغبوب نتيجة واحدة';
+      if (n === 2) return 'وجد صغبوب نتيجتين';
+      if (n >= 3 && n <= 10) return `وجد صغبوب ${n} نتائج`;
+      return `وجد صغبوب ${n} نتيجة`;
+    },
     towerSaghboopPlaceholder: 'اسأل صغبوب عن أي شيء في البرج...',
     towerCreateFolder: 'إنشاء مجلد جديد',
     towerCreateFile: 'إنشاء ملف جديد',
@@ -282,6 +294,7 @@ const translations = {
     towerSearchFailed: 'فشل في البحث',
     towerBgUpdated: 'تم تحديث الخلفية',
     towerBgUpdateFailed: 'فشل في التحديث',
+    failedToLoadTasks: 'فشل في تحميل المهام',
     taskCreated: 'تم إنشاء المهمة بنجاح!',
     failedToCreateTask: 'فشل في إنشاء المهمة',
     taskUpdated: 'تم تحديث المهمة!',

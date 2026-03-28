@@ -137,8 +137,7 @@ export default function KnowledgePage({ user }) {
                 {article.content}
               </p>
               <div className="flex items-center justify-between text-xs text-zinc-500">
-                <span className="font-plex">
-                  {t.by} {article.created_by_name}</span>
+                <span className="font-plex">{t.by} {article.created_by_name}</span>
                 <span className="font-plex">{new Date(article.created_at).toLocaleDateString()}</span>
               </div>
             </motion.div>
