@@ -45,7 +45,11 @@ export default function Layout({ children, user, onLogout }) {
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         <div className="p-6 border-b border-zinc-200">
-          <h1 className="font-outfit text-3xl font-medium text-zinc-900">sahub</h1>
+          {/* New SVG Logo */}
+          <svg width="120" height="auto" viewBox="0 0 292 233" fill="none" xmlns="http://www.w3.org/2000/svg" className="mb-2">
+            <path d="M146 0L292 73V160L146 233L0 160V73L146 0Z" fill="#18181B"/>
+            <path d="M146 58L220 95V146L146 183L72 146V95L146 58Z" fill="#FFFFFF"/>
+          </svg>
           <p className="font-plex text-xs text-zinc-500 mt-1">Team Management</p>
         </div>
 

@@ -57,6 +57,7 @@ export default function KnowledgeTower({ user }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [expandedFolders, setExpandedFolders] = useState(new Set());
   const [treeVisible, setTreeVisible] = useState(true);
+  const [viewMode, setViewMode] = useState('shb'); // 'shb' or 'tree'
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
@@ -289,15 +290,17 @@ export default function KnowledgeTower({ user }) {
   const isDarkMode = selectedFile?.bg_color === '#18181B';
 
   return (
-    <div data-testid="knowledge-tower" className="flex h-[calc(100vh-4rem)] overflow-hidden">
-      {/* File Tree Panel */}
+    <div data-testid="knowledge-tower" className="flex flex-row-reverse h-[calc(100vh-4rem)] overflow-hidden">
+      {/* File Tree Panel - NOW ON RIGHT */}
       <AnimatePresence>
         {treeVisible && (
           <motion.div
-            initial={{ x: -280 }}
+            initial={{ x: 300 }}
             animate={{ x: 0 }}
-            exit={{ x: -280 }}
-            className="w-[280px] border-r border-zinc-200 bg-white flex flex-col"
+            exit={{ x: 300 }}
+            className={`w-[300px] border-l border-zinc-200 bg-zinc-50 flex flex-col transition-all duration-300 ${
+              viewMode === 'tree' ? 'z-10 opacity-100' : 'z-0 opacity-30 pointer-events-none'
+            }`}
           >
             <div className="p-4 border-b border-zinc-200">
               <div className="flex items-center gap-2 mb-4">
@@ -332,17 +335,47 @@ export default function KnowledgeTower({ user }) {
         )}
       </AnimatePresence>
 
-      {/* Content Panel */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Toggle Button */}
-        <div className="p-2 border-b border-zinc-200">
-          <button
-            data-testid="toggle-tree-button"
-            onClick={() => setTreeVisible(!treeVisible)}
-            className="p-2 hover:bg-zinc-100 rounded-lg"
-          >
-            <Menu className="w-5 h-5 text-zinc-600" />
-          </button>
+      {/* Sahbopa Content Area - NOW ON LEFT */}
+      <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${
+        viewMode === 'shb' ? 'z-10 opacity-100' : 'z-0 opacity-30 pointer-events-none'
+      }`}>
+        {/* Header with Toggle */}
+        <div className="p-4 border-b border-zinc-200 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button
+              data-testid="toggle-tree-button"
+              onClick={() => setTreeVisible(!treeVisible)}
+              className="p-2 hover:bg-zinc-100 rounded-lg"
+            >
+              <Menu className="w-5 h-5 text-zinc-600" />
+            </button>
+            
+            {/* Shb vs Tree Toggle */}
+            <div className="flex gap-1 bg-zinc-100 rounded-full p-1">
+              <button
+                data-testid="shb-mode-button"
+                onClick={() => setViewMode('shb')}
+                className={`px-4 py-2 rounded-full font-plex text-sm font-medium transition-all ${
+                  viewMode === 'shb'
+                    ? 'bg-zinc-900 text-white'
+                    : 'text-zinc-600 hover:text-zinc-900'
+                }`}
+              >
+                🤖 Sahbopa
+              </button>
+              <button
+                data-testid="tree-mode-button"
+                onClick={() => setViewMode('tree')}
+                className={`px-4 py-2 rounded-full font-plex text-sm font-medium transition-all ${
+                  viewMode === 'tree'
+                    ? 'bg-zinc-900 text-white'
+                    : 'text-zinc-600 hover:text-zinc-900'
+                }`}
+              >
+                📚 Tree
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Content Area */}
