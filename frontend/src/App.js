@@ -4,6 +4,7 @@ import AuthPage from './pages/AuthPage';
 import Dashboard from './pages/Dashboard';
 import TasksPage from './pages/TasksPage';
 import KnowledgePage from './pages/KnowledgePage';
+import KnowledgeTower from './pages/KnowledgeTower';
 import UpdatesPage from './pages/UpdatesPage';
 import Layout from './components/Layout';
 import { Toaster } from './components/ui/sonner';
@@ -65,6 +66,7 @@ function App() {
                     <Route path="/" element={<Dashboard user={user} />} />
                     <Route path="/tasks" element={<TasksPage user={user} />} />
                     <Route path="/knowledge" element={<KnowledgePage user={user} />} />
+                    <Route path="/tower" element={<KnowledgeTower user={user} />} />
                     <Route path="/updates" element={<UpdatesPage user={user} />} />
                   </Routes>
                 </Layout>

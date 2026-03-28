@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, CheckSquare, FileText, Megaphone, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, FileText, Megaphone, LogOut, Menu, X, Library } from 'lucide-react';
 import { Button } from './ui/button';
 
 export default function Layout({ children, user, onLogout }) {
@@ -11,6 +11,7 @@ export default function Layout({ children, user, onLogout }) {
     { path: '/', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/tasks', label: 'Tasks', icon: CheckSquare },
     { path: '/knowledge', label: 'Knowledge', icon: FileText },
+    { path: '/tower', label: 'Knowledge Tower', icon: Library },
     { path: '/updates', label: 'Updates', icon: Megaphone }
   ];
 

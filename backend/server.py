@@ -404,6 +404,246 @@ async def get_stats(current_user: dict = Depends(get_current_user)):
     }
 
 
+# ============= KNOWLEDGE TOWER - FOLDERS =============
+
+class TowerFolderCreate(BaseModel):
+    name: str
+    parent_id: Optional[str] = None
+    color: str = "zinc"
+    order: int = 0
+
+class TowerFolder(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    name: str
+    parent_id: Optional[str] = None
+    color: str
+    created_by: str
+    created_at: str
+    updated_at: str
+    order: int
+
+@api_router.post("/tower/folders", response_model=TowerFolder)
+async def create_tower_folder(folder_input: TowerFolderCreate, current_user: dict = Depends(get_current_user)):
+    folder_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    
+    folder_doc = {
+        "id": folder_id,
+        "name": folder_input.name,
+        "parent_id": folder_input.parent_id,
+        "color": folder_input.color,
+        "created_by": current_user["id"],
+        "created_at": now,
+        "updated_at": now,
+        "order": folder_input.order
+    }
+    
+    await db.tower_folders.insert_one(folder_doc)
+    return TowerFolder(**folder_doc)
+
+@api_router.get("/tower/folders", response_model=List[TowerFolder])
+async def get_tower_folders(current_user: dict = Depends(get_current_user)):
+    folders = await db.tower_folders.find({}, {"_id": 0}).sort("order", 1).to_list(1000)
+    return [TowerFolder(**f) for f in folders]
+
+@api_router.patch("/tower/folders/{folder_id}", response_model=TowerFolder)
+async def update_tower_folder(folder_id: str, updates: dict, current_user: dict = Depends(get_current_user)):
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+    result = await db.tower_folders.update_one({"id": folder_id}, {"$set": updates})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Folder not found")
+    
+    folder = await db.tower_folders.find_one({"id": folder_id}, {"_id": 0})
+    return TowerFolder(**folder)
+
+@api_router.delete("/tower/folders/{folder_id}")
+async def delete_tower_folder(folder_id: str, current_user: dict = Depends(get_current_user)):
+    # Delete all files in folder
+    await db.tower_files.delete_many({"folder_id": folder_id})
+    
+    # Delete all subfolders recursively
+    async def delete_subfolders(parent_id):
+        subfolders = await db.tower_folders.find({"parent_id": parent_id}, {"_id": 0}).to_list(1000)
+        for subfolder in subfolders:
+            await db.tower_files.delete_many({"folder_id": subfolder["id"]})
+            await delete_subfolders(subfolder["id"])
+            await db.tower_folders.delete_one({"id": subfolder["id"]})
+    
+    await delete_subfolders(folder_id)
+    
+    # Delete the folder itself
+    result = await db.tower_folders.delete_one({"id": folder_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Folder not found")
+    return {"message": "Folder deleted"}
+
+
+# ============= KNOWLEDGE TOWER - FILES =============
+
+class TowerFileCreate(BaseModel):
+    name: str
+    folder_id: Optional[str] = None
+    content: str = ""
+    color: str = "zinc"
+    bg_color: str = "#FFFFFF"
+    order: int = 0
+
+class TowerFileUpdate(BaseModel):
+    name: Optional[str] = None
+    folder_id: Optional[str] = None
+    content: Optional[str] = None
+    color: Optional[str] = None
+    bg_color: Optional[str] = None
+    order: Optional[int] = None
+
+class TowerFile(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    name: str
+    folder_id: Optional[str] = None
+    content: str
+    content_text: str
+    color: str
+    bg_color: str
+    created_by: str
+    created_by_name: str
+    created_at: str
+    updated_at: str
+    order: int
+
+class TowerFileMeta(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    name: str
+    folder_id: Optional[str] = None
+    color: str
+    bg_color: str
+    created_by: str
+    created_by_name: str
+    created_at: str
+    updated_at: str
+    order: int
+
+def html_to_text(html_content: str) -> str:
+    """Simple HTML to text conversion for search"""
+    import re
+    text = re.sub(r'<[^>]+>', ' ', html_content)
+    text = re.sub(r'\s+', ' ', text)
+    return text.strip()
+
+@api_router.post("/tower/files", response_model=TowerFile)
+async def create_tower_file(file_input: TowerFileCreate, current_user: dict = Depends(get_current_user)):
+    file_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    content_text = html_to_text(file_input.content)
+    
+    file_doc = {
+        "id": file_id,
+        "name": file_input.name,
+        "folder_id": file_input.folder_id,
+        "content": file_input.content,
+        "content_text": content_text,
+        "color": file_input.color,
+        "bg_color": file_input.bg_color,
+        "created_by": current_user["id"],
+        "created_by_name": current_user["name"],
+        "created_at": now,
+        "updated_at": now,
+        "order": file_input.order
+    }
+    
+    await db.tower_files.insert_one(file_doc)
+    return TowerFile(**file_doc)
+
+@api_router.get("/tower/files", response_model=List[TowerFileMeta])
+async def get_tower_files(current_user: dict = Depends(get_current_user)):
+    files = await db.tower_files.find({}, {"_id": 0, "content": 0, "content_text": 0}).sort("order", 1).to_list(1000)
+    return [TowerFileMeta(**f) for f in files]
+
+@api_router.get("/tower/files/{file_id}", response_model=TowerFile)
+async def get_tower_file(file_id: str, current_user: dict = Depends(get_current_user)):
+    file = await db.tower_files.find_one({"id": file_id}, {"_id": 0})
+    if not file:
+        raise HTTPException(status_code=404, detail="File not found")
+    return TowerFile(**file)
+
+@api_router.patch("/tower/files/{file_id}", response_model=TowerFile)
+async def update_tower_file(file_id: str, updates: dict, current_user: dict = Depends(get_current_user)):
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    # Update content_text if content is updated
+    if "content" in updates:
+        updates["content_text"] = html_to_text(updates["content"])
+    
+    result = await db.tower_files.update_one({"id": file_id}, {"$set": updates})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    file = await db.tower_files.find_one({"id": file_id}, {"_id": 0})
+    return TowerFile(**file)
+
+@api_router.delete("/tower/files/{file_id}")
+async def delete_tower_file(file_id: str, current_user: dict = Depends(get_current_user)):
+    result = await db.tower_files.delete_one({"id": file_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="File not found")
+    return {"message": "File deleted"}
+
+
+# ============= KNOWLEDGE TOWER - SEARCH (SAGHBOOP) =============
+
+class SearchResult(BaseModel):
+    file_id: str
+    file_name: str
+    folder_id: Optional[str] = None
+    snippet: str
+    color: str
+
+@api_router.get("/tower/search", response_model=List[SearchResult])
+async def search_tower(q: str, current_user: dict = Depends(get_current_user)):
+    if not q or len(q.strip()) < 2:
+        return []
+    
+    # Simple text search across all files
+    files = await db.tower_files.find({
+        "$or": [
+            {"name": {"$regex": q, "$options": "i"}},
+            {"content_text": {"$regex": q, "$options": "i"}}
+        ]
+    }, {"_id": 0}).to_list(100)
+    
+    results = []
+    for file in files:
+        # Extract snippet around the match
+        content_text = file.get("content_text", "")
+        query_lower = q.lower()
+        content_lower = content_text.lower()
+        
+        match_index = content_lower.find(query_lower)
+        if match_index >= 0:
+            start = max(0, match_index - 50)
+            end = min(len(content_text), match_index + len(q) + 50)
+            snippet = content_text[start:end]
+            if start > 0:
+                snippet = "..." + snippet
+            if end < len(content_text):
+                snippet = snippet + "..."
+        else:
+            # Match in title
+            snippet = content_text[:100] + "..." if len(content_text) > 100 else content_text
+        
+        results.append(SearchResult(
+            file_id=file["id"],
+            file_name=file["name"],
+            folder_id=file.get("folder_id"),
+            snippet=snippet,
+            color=file.get("color", "zinc")
+        ))
+    
+    return results
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
