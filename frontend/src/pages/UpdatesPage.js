@@ -7,6 +7,7 @@ import { Textarea } from '../components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { toast } from 'sonner';
 import { Megaphone, Plus, Trash2 } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -24,6 +25,7 @@ export default function UpdatesPage({ user }) {
     content: '',
     type: 'announcement'
   });
+  const { t } = useLanguage();
 
   useEffect(() => {
     loadUpdates();
@@ -34,7 +36,7 @@ export default function UpdatesPage({ user }) {
       const response = await axios.get(`${API}/updates`, getAuthHeader());
       setUpdates(response.data);
     } catch (error) {
-      toast.error('Failed to load updates');
+      toast.error(t.failedToLoadUpdates);
     } finally {
       setLoading(false);
     }
@@ -49,9 +51,9 @@ export default function UpdatesPage({ user }) {
       setUpdates([response.data, ...updates]);
       setNewUpdate({ title: '', content: '', type: 'announcement' });
       setShowCreateDialog(false);
-      toast.success('Update posted successfully!');
+      toast.success(t.updatePosted);
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to create update');
+      toast.error(error.response?.data?.detail || t.failedToCreateUpdate);
     }
   };
 
@@ -59,9 +61,9 @@ export default function UpdatesPage({ user }) {
     try {
       await axios.delete(`${API}/updates/${updateId}`, getAuthHeader());
       setUpdates(updates.filter(u => u.id !== updateId));
-      toast.success('Update deleted');
+      toast.success(t.updateDeleted);
     } catch (error) {
-      toast.error('Failed to delete update');
+      toast.error(t.failedToDeleteUpdate);
     }
   };
 
@@ -80,10 +82,10 @@ export default function UpdatesPage({ user }) {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="font-outfit text-3xl sm:text-4xl lg:text-5xl tracking-tight text-zinc-900 font-medium mb-2">
-            Company Updates
+            {t.companyUpdates}
           </h1>
           <p className="font-plex text-sm sm:text-base text-zinc-600 leading-relaxed">
-            Latest news and announcements
+            {t.updatesSubtitle}
           </p>
         </div>
         {canCreateUpdate && (
@@ -92,8 +94,8 @@ export default function UpdatesPage({ user }) {
             onClick={() => setShowCreateDialog(true)}
             className="rounded-full bg-zinc-900 text-white hover:bg-zinc-800 font-plex font-medium w-full sm:w-auto"
           >
-            <Plus className="w-4 h-4 mr-2" />
-            New Update
+            <Plus className="w-4 h-4 me-2" />
+            {t.newUpdate}
           </Button>
         )}
       </div>
@@ -101,14 +103,14 @@ export default function UpdatesPage({ user }) {
       {updates.length === 0 ? (
         <div className="text-center py-16 border border-zinc-200 rounded-2xl">
           <Megaphone className="w-12 h-12 text-zinc-300 mx-auto mb-4" />
-          <p className="font-plex text-base text-zinc-500 mb-4">No updates yet</p>
+          <p className="font-plex text-base text-zinc-500 mb-4">{t.noUpdatesYet}</p>
           {canCreateUpdate && (
             <Button
               data-testid="create-first-update-button"
               onClick={() => setShowCreateDialog(true)}
               className="rounded-full bg-zinc-900 text-white hover:bg-zinc-800"
             >
-              Post First Update
+              {t.postFirstUpdate}
             </Button>
           )}
         </div>
@@ -162,7 +164,7 @@ export default function UpdatesPage({ user }) {
                 {update.content}
               </p>
               <div className="flex items-center text-sm text-zinc-500">
-                <span className="font-plex">Posted by {update.created_by_name}</span>
+                <span className="font-plex">{t.postedBy} {update.created_by_name}</span>
                 <span className="mx-2">•</span>
                 <span className="font-plex">{new Date(update.created_at).toLocaleString()}</span>
               </div>
@@ -175,26 +177,26 @@ export default function UpdatesPage({ user }) {
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent data-testid="create-update-dialog" className="max-w-2xl rounded-2xl" aria-describedby="create-update-description">
           <DialogHeader>
-            <DialogTitle className="font-outfit text-2xl font-medium">Post New Update</DialogTitle>
+            <DialogTitle className="font-outfit text-2xl font-medium">{t.postNewUpdate}</DialogTitle>
           </DialogHeader>
           <div id="create-update-description" className="sr-only">Form to post a new company update or announcement</div>
           <form onSubmit={handleCreateUpdate} className="space-y-4">
             <div>
               <label className="font-plex text-xs uppercase tracking-wider text-zinc-500 font-semibold mb-2 block">
-                Title
+                {t.title}
               </label>
               <Input
                 data-testid="update-title-input"
                 value={newUpdate.title}
                 onChange={(e) => setNewUpdate({ ...newUpdate, title: e.target.value })}
                 className="rounded-xl border-zinc-200"
-                placeholder="Update title..."
+                placeholder={t.updateTitlePlaceholder}
                 required
               />
             </div>
             <div>
               <label className="font-plex text-xs uppercase tracking-wider text-zinc-500 font-semibold mb-2 block">
-                Type
+                {t.type}
               </label>
               <select
                 data-testid="update-type-select"
@@ -202,21 +204,21 @@ export default function UpdatesPage({ user }) {
                 onChange={(e) => setNewUpdate({ ...newUpdate, type: e.target.value })}
                 className="w-full px-3 py-2 rounded-xl border border-zinc-200 bg-white font-plex text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900"
               >
-                <option value="announcement">Announcement</option>
-                <option value="news">News</option>
-                <option value="feature">Feature</option>
+                <option value="announcement">{t.typeAnnouncement}</option>
+                <option value="news">{t.typeNews}</option>
+                <option value="feature">{t.typeFeature}</option>
               </select>
             </div>
             <div>
               <label className="font-plex text-xs uppercase tracking-wider text-zinc-500 font-semibold mb-2 block">
-                Content
+                {t.content}
               </label>
               <Textarea
                 data-testid="update-content-textarea"
                 value={newUpdate.content}
                 onChange={(e) => setNewUpdate({ ...newUpdate, content: e.target.value })}
                 className="rounded-xl border-zinc-200 min-h-[150px]"
-                placeholder="Write your update..."
+                placeholder={t.updateContentPlaceholder}
                 required
               />
             </div>
@@ -228,14 +230,14 @@ export default function UpdatesPage({ user }) {
                 variant="outline"
                 className="rounded-full"
               >
-                Cancel
+                {t.cancel}
               </Button>
               <Button
                 data-testid="submit-update-button"
                 type="submit"
                 className="rounded-full bg-zinc-900 text-white hover:bg-zinc-800"
               >
-                Post Update
+                {t.postUpdate}
               </Button>
             </div>
           </form>

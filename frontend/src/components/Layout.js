@@ -2,17 +2,19 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { LayoutDashboard, CheckSquare, FileText, Megaphone, LogOut, Menu, X, Library } from 'lucide-react';
 import { Button } from './ui/button';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function Layout({ children, user, onLogout }) {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { language, toggleLanguage, t } = useLanguage();
 
   const navItems = [
-    { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/tasks', label: 'Tasks', icon: CheckSquare },
-    { path: '/knowledge', label: 'Knowledge', icon: FileText },
-    { path: '/tower', label: 'Knowledge Tower', icon: Library },
-    { path: '/updates', label: 'Updates', icon: Megaphone }
+    { path: '/', label: t.navDashboard, testId: 'dashboard', icon: LayoutDashboard },
+    { path: '/tasks', label: t.navTasks, testId: 'tasks', icon: CheckSquare },
+    { path: '/knowledge', label: t.navKnowledge, testId: 'knowledge', icon: FileText },
+    { path: '/tower', label: t.navKnowledgeTower, testId: 'knowledge tower', icon: Library },
+    { path: '/updates', label: t.navUpdates, testId: 'updates', icon: Megaphone }
   ];
 
   const isActive = (path) => {
@@ -29,13 +31,22 @@ export default function Layout({ children, user, onLogout }) {
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 bg-white border-b border-zinc-200 z-50 px-4 py-3 flex items-center justify-between">
         <h1 className="font-outfit text-2xl font-medium text-zinc-900">sahub</h1>
-        <button
-          data-testid="mobile-menu-toggle"
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="p-2 rounded-lg hover:bg-zinc-100"
-        >
-          {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            data-testid="language-toggle"
+            onClick={toggleLanguage}
+            className="px-3 py-1 rounded-full border border-zinc-200 font-plex text-xs font-semibold text-zinc-700 hover:bg-zinc-100 transition-colors"
+          >
+            {language === 'en' ? 'AR' : 'EN'}
+          </button>
+          <button
+            data-testid="mobile-menu-toggle"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="p-2 rounded-lg hover:bg-zinc-100"
+          >
+            {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+        </div>
       </div>
 
       {/* Sidebar - Desktop and Mobile */}
@@ -50,7 +61,7 @@ export default function Layout({ children, user, onLogout }) {
             <path d="M146 0L292 73V160L146 233L0 160V73L146 0Z" fill="#18181B"/>
             <path d="M146 58L220 95V146L146 183L72 146V95L146 58Z" fill="#FFFFFF"/>
           </svg>
-          <p className="font-plex text-xs text-zinc-500 mt-1">Team Management</p>
+          <p className="font-plex text-xs text-zinc-500 mt-1">{t.teamManagement}</p>
         </div>
 
         <nav data-testid="sidebar-nav" className="flex-1 p-4 space-y-2">
@@ -60,7 +71,7 @@ export default function Layout({ children, user, onLogout }) {
               <Link
                 key={item.path}
                 to={item.path}
-                data-testid={`nav-${item.label.toLowerCase()}`}
+                data-testid={`nav-${item.testId}`}
                 onClick={handleNavClick}
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl font-plex text-sm font-medium transition-all duration-200 ${
                   isActive(item.path)
@@ -99,8 +110,8 @@ export default function Layout({ children, user, onLogout }) {
             variant="outline"
             className="w-full rounded-full border-zinc-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
           >
-            <LogOut className="w-4 h-4 mr-2" />
-            Logout
+            <LogOut className="w-4 h-4 me-2" />
+            {t.logout}
           </Button>
         </div>
       </aside>
@@ -114,7 +125,17 @@ export default function Layout({ children, user, onLogout }) {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 lg:ml-64 pt-16 lg:pt-0">
+      <main className="flex-1 lg:ms-64 pt-16 lg:pt-0">
+        {/* Desktop language toggle - top right */}
+        <div className="hidden lg:flex justify-end px-8 pt-6 pb-0">
+          <button
+            data-testid="language-toggle-desktop"
+            onClick={toggleLanguage}
+            className="px-4 py-1.5 rounded-full border border-zinc-200 font-plex text-xs font-semibold text-zinc-700 hover:bg-zinc-100 transition-colors"
+          >
+            {language === 'en' ? 'AR | العربية' : 'EN | English'}
+          </button>
+        </div>
         <div className="p-4 sm:p-6 lg:p-8 max-w-7xl">
           {children}
         </div>

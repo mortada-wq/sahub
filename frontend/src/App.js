@@ -8,6 +8,7 @@ import KnowledgeTower from './pages/KnowledgeTower';
 import UpdatesPage from './pages/UpdatesPage';
 import Layout from './components/Layout';
 import { Toaster } from './components/ui/sonner';
+import { LanguageProvider } from './context/LanguageContext';
 import './App.css';
 
 function App() {
@@ -44,7 +45,7 @@ function App() {
   }
 
   return (
-    <>
+    <LanguageProvider>
       <BrowserRouter>
         <Routes>
           <Route
@@ -78,7 +79,7 @@ function App() {
         </Routes>
       </BrowserRouter>
       <Toaster position="top-right" />
-    </>
+    </LanguageProvider>
   );
 }
 

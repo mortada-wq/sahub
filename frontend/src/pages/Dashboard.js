@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import { LayoutDashboard, CheckSquare, Users, FileText } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -20,6 +21,7 @@ export default function Dashboard({ user }) {
   });
   const [recentTasks, setRecentTasks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { t } = useLanguage();
 
   useEffect(() => {
     loadDashboardData();
@@ -41,11 +43,11 @@ export default function Dashboard({ user }) {
   };
 
   const statCards = [
-    { label: 'Total Tasks', value: stats.total_tasks, icon: CheckSquare, color: 'bg-blue-50 text-blue-700' },
-    { label: 'My Tasks', value: stats.my_tasks, icon: LayoutDashboard, color: 'bg-emerald-50 text-emerald-700' },
-    { label: 'Completed', value: stats.completed_tasks, icon: CheckSquare, color: 'bg-zinc-50 text-zinc-700' },
-    { label: 'Knowledge Base', value: stats.total_articles, icon: FileText, color: 'bg-amber-50 text-amber-700' },
-    { label: 'Team Members', value: stats.total_users, icon: Users, color: 'bg-red-50 text-red-700' }
+    { labelKey: 'totalTasks', value: stats.total_tasks, icon: CheckSquare, color: 'bg-blue-50 text-blue-700', testId: 'total-tasks' },
+    { labelKey: 'myTasks', value: stats.my_tasks, icon: LayoutDashboard, color: 'bg-emerald-50 text-emerald-700', testId: 'my-tasks' },
+    { labelKey: 'completed', value: stats.completed_tasks, icon: CheckSquare, color: 'bg-zinc-50 text-zinc-700', testId: 'completed' },
+    { labelKey: 'knowledgeBase', value: stats.total_articles, icon: FileText, color: 'bg-amber-50 text-amber-700', testId: 'knowledge-base' },
+    { labelKey: 'teamMembers', value: stats.total_users, icon: Users, color: 'bg-red-50 text-red-700', testId: 'team-members' }
   ];
 
   if (loading) {
@@ -60,10 +62,10 @@ export default function Dashboard({ user }) {
     <div data-testid="dashboard" className="space-y-6 sm:space-y-8">
       <div>
         <h1 className="font-outfit text-3xl sm:text-4xl lg:text-5xl tracking-tight text-zinc-900 font-medium mb-2">
-          Welcome back, {user.name}
+          {t.welcomeBackUser(user.name)}
         </h1>
         <p className="font-plex text-sm sm:text-base text-zinc-600 leading-relaxed">
-          Here's what's happening with your team today.
+          {t.dashboardSubtitle}
         </p>
       </div>
 
@@ -72,18 +74,18 @@ export default function Dashboard({ user }) {
           const Icon = stat.icon;
           return (
             <motion.div
-              key={stat.label}
+              key={stat.labelKey}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              data-testid={`stat-card-${stat.label.toLowerCase().replace(/\s+/g, '-')}`}
+              data-testid={`stat-card-${stat.testId}`}
               className="bg-white border border-zinc-200 rounded-xl sm:rounded-2xl p-4 sm:p-6 hover:shadow-sm hover:-translate-y-1 transition-all duration-200"
             >
               <div className={`inline-flex p-2 sm:p-3 rounded-lg sm:rounded-xl ${stat.color} mb-3 sm:mb-4`}>
                 <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
               <div className="font-outfit text-2xl sm:text-3xl font-medium text-zinc-900 mb-1">{stat.value}</div>
-              <div className="font-plex text-xs sm:text-sm text-zinc-500">{stat.label}</div>
+              <div className="font-plex text-xs sm:text-sm text-zinc-500">{t[stat.labelKey]}</div>
             </motion.div>
           );
         })}
@@ -92,7 +94,7 @@ export default function Dashboard({ user }) {
       {recentTasks.length > 0 && (
         <div>
           <h2 className="font-outfit text-xl sm:text-2xl lg:text-3xl tracking-tight text-zinc-900 font-medium mb-4 sm:mb-6">
-            Recent Tasks
+            {t.recentTasks}
           </h2>
           <div className="space-y-3">
             {recentTasks.map((task, index) => (
@@ -124,7 +126,7 @@ export default function Dashboard({ user }) {
                       </span>
                       {task.assigned_to_name && (
                         <span className="font-plex text-xs text-zinc-500 hidden sm:inline">
-                          Assigned to {task.assigned_to_name}
+                          {t.assignedTo} {task.assigned_to_name}
                         </span>
                       )}
                     </div>

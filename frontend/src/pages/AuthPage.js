@@ -5,6 +5,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import axios from 'axios';
 import { toast } from 'sonner';
+import { useLanguage } from '../context/LanguageContext';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -18,6 +19,7 @@ export default function AuthPage({ onLogin }) {
     role: 'member'
   });
   const [loading, setLoading] = useState(false);
+  const { language, toggleLanguage, t } = useLanguage();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -32,10 +34,10 @@ export default function AuthPage({ onLogin }) {
       const response = await axios.post(`${API}${endpoint}`, payload);
       const { token, user } = response.data;
 
-      toast.success(isLogin ? 'Welcome back!' : 'Account created successfully!');
+      toast.success(isLogin ? t.welcomeBack : t.accountCreated);
       onLogin(token, user);
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Authentication failed');
+      toast.error(error.response?.data?.detail || t.authFailed);
     } finally {
       setLoading(false);
     }
@@ -43,6 +45,17 @@ export default function AuthPage({ onLogin }) {
 
   return (
     <div className="min-h-screen bg-white flex items-center justify-center p-6">
+      {/* Language toggle - top right */}
+      <div className="fixed top-4 end-4 z-50">
+        <button
+          data-testid="language-toggle"
+          onClick={toggleLanguage}
+          className="px-4 py-1.5 rounded-full border border-zinc-200 font-plex text-xs font-semibold text-zinc-700 hover:bg-zinc-100 transition-colors bg-white shadow-sm"
+        >
+          {language === 'en' ? 'AR | العربية' : 'EN | English'}
+        </button>
+      </div>
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -51,7 +64,7 @@ export default function AuthPage({ onLogin }) {
       >
         <div className="text-center mb-8">
           <h1 className="font-outfit text-5xl font-medium text-zinc-900 mb-2">sahub</h1>
-          <p className="font-plex text-base text-zinc-600">Team management made simple</p>
+          <p className="font-plex text-base text-zinc-600">{t.tagline}</p>
         </div>
 
         <div className="bg-white border border-zinc-200 rounded-2xl p-8">
@@ -65,7 +78,7 @@ export default function AuthPage({ onLogin }) {
                   : 'text-zinc-600 hover:text-zinc-900'
               }`}
             >
-              Login
+              {t.login}
             </button>
             <button
               data-testid="register-tab-button"
@@ -76,7 +89,7 @@ export default function AuthPage({ onLogin }) {
                   : 'text-zinc-600 hover:text-zinc-900'
               }`}
             >
-              Register
+              {t.register}
             </button>
           </div>
 
@@ -84,7 +97,7 @@ export default function AuthPage({ onLogin }) {
             {!isLogin && (
               <div>
                 <Label htmlFor="name" className="font-plex text-xs uppercase tracking-wider text-zinc-500 font-semibold mb-2 block">
-                  Name
+                  {t.name}
                 </Label>
                 <Input
                   id="name"
@@ -100,7 +113,7 @@ export default function AuthPage({ onLogin }) {
 
             <div>
               <Label htmlFor="email" className="font-plex text-xs uppercase tracking-wider text-zinc-500 font-semibold mb-2 block">
-                Email
+                {t.email}
               </Label>
               <Input
                 id="email"
@@ -115,7 +128,7 @@ export default function AuthPage({ onLogin }) {
 
             <div>
               <Label htmlFor="password" className="font-plex text-xs uppercase tracking-wider text-zinc-500 font-semibold mb-2 block">
-                Password
+                {t.password}
               </Label>
               <Input
                 id="password"
@@ -131,7 +144,7 @@ export default function AuthPage({ onLogin }) {
             {!isLogin && (
               <div>
                 <Label htmlFor="role" className="font-plex text-xs uppercase tracking-wider text-zinc-500 font-semibold mb-2 block">
-                  Role
+                  {t.role}
                 </Label>
                 <select
                   id="role"
@@ -140,9 +153,9 @@ export default function AuthPage({ onLogin }) {
                   onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                   className="w-full px-3 py-2 rounded-xl border border-zinc-200 bg-white font-plex text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent"
                 >
-                  <option value="member">Member</option>
-                  <option value="manager">Manager</option>
-                  <option value="admin">Admin</option>
+                  <option value="member">{t.roleMember}</option>
+                  <option value="manager">{t.roleManager}</option>
+                  <option value="admin">{t.roleAdmin}</option>
                 </select>
               </div>
             )}
@@ -153,7 +166,7 @@ export default function AuthPage({ onLogin }) {
               disabled={loading}
               className="w-full rounded-full bg-zinc-900 text-white hover:bg-zinc-800 font-plex font-medium py-6 mt-6"
             >
-              {loading ? 'Loading...' : isLogin ? 'Sign In' : 'Create Account'}
+              {loading ? t.loading : isLogin ? t.signIn : t.createAccount}
             </Button>
           </form>
         </div>
